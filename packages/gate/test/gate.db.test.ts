@@ -300,6 +300,17 @@ describe('reviews, ratings and stars', () => {
     ).rejects.toMatchObject({ code: 'NOT_FINISHED' });
   });
 
+  it('profile: a hidden reader’s current book stays off their shelf for others', async () => {
+    await db.membership.update({
+      where: { clubId_userId: { clubId: s.clubId, userId: s.users.anu } },
+      data: { positionHidden: true },
+    });
+    expect(await profileBooks(db, s.users.anu, s.users.rahul)).toEqual([]);
+    expect(await profileBooks(db, s.users.anu, s.users.anu)).toHaveLength(1);
+    await db.room.update({ where: { id: s.roomId }, data: { status: 'done' } });
+    expect(await profileBooks(db, s.users.anu, s.users.rahul)).toHaveLength(1);
+  });
+
   it('profile: rating and review hidden from an unfinished club-mate unless made public', async () => {
     const hidden = await profileBooks(db, s.users.anu, s.users.rahul);
     expect(hidden[0]).toMatchObject({ rating: null, review: null });

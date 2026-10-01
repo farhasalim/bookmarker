@@ -195,15 +195,15 @@ export function attachRealtime(
           },
           select: { userId: true },
         });
-        if (!hidden) {
-          socket.emit('bookmark:update', {
-            roomId,
-            seq,
-            userId: e.userId,
-            position: e.to.position,
-            finished: e.to.finished,
-          });
-        }
+        // Hidden positions (FR-20): no position updates and no "finished" news either.
+        if (hidden) return;
+        socket.emit('bookmark:update', {
+          roomId,
+          seq,
+          userId: e.userId,
+          position: e.to.position,
+          finished: e.to.finished,
+        });
         if (e.to.finished && !e.from.finished)
           socket.emit('finished', { roomId, seq, userId: e.userId });
         return;

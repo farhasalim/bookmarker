@@ -145,8 +145,24 @@ export async function profileBooks(
   profileUserId: string,
   viewerId: string,
 ): Promise<ProfileBook[]> {
+  const self = profileUserId === viewerId;
   const finished = await tx.bookmark.findMany({
-    where: { userId: profileUserId, finished: true },
+    where: {
+      userId: profileUserId,
+      finished: true,
+      // A reader hiding their position in a club keeps that club's CURRENT book off
+      // their shelf for others until the room is closed (FR-20).
+      ...(self
+        ? {}
+        : {
+            NOT: {
+              room: {
+                status: 'current',
+                club: { memberships: { some: { userId: profileUserId, positionHidden: true } } },
+              },
+            },
+          }),
+    },
     select: {
       roomId: true,
       room: { select: { title: true, author: true, coverUrl: true } },
@@ -170,7 +186,6 @@ export async function profileBooks(
   const reviewBy = new Map(reviews.map((r) => [r.roomId, r]));
   const viewerDone = new Set(viewerFinished.map((b) => b.roomId));
   const starsBy = new Map(stars.map((s) => [s.roomId, s._count._all]));
-  const self = profileUserId === viewerId;
 
   return finished.map((f) => {
     const r = reviewBy.get(f.roomId);

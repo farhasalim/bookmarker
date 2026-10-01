@@ -84,6 +84,12 @@ export async function queueFinishedNotifications(
   input: { userId: string; userName: string; roomId: string; clubId: string; roomTitle: string },
   now: Date,
 ): Promise<void> {
+  // Readers who hide their position don't announce finishing either (FR-20).
+  const finisher = await tx.membership.findUnique({
+    where: { clubId_userId: { clubId: input.clubId, userId: input.userId } },
+    select: { positionHidden: true },
+  });
+  if (!finisher || finisher.positionHidden) return;
   const members = await tx.membership.findMany({
     where: { clubId: input.clubId, userId: { not: input.userId }, user: { deletedAt: null } },
     select: { userId: true },

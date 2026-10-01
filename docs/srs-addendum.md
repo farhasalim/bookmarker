@@ -34,3 +34,9 @@ Where this table and the SRS disagree, this table wins. Each row says what chang
 - `POST /moderation/reports/:reportId` `{ action: delete | dismiss }`.
 - `GET /me/export`, `DELETE /me` (SEC-11).
 - Socket event `room:changed` (chapter list changed) and `notification:new`.
+
+## Found in the Phase 1 self-review
+
+- **Hidden readers finishing (FR-20).** A reader who hides their position no longer triggers the
+  "finished" socket event or "Anu finished the book" letters, and the club's current book stays
+  off their shelf for others until the room closes.

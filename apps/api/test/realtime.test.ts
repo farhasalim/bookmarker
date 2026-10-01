@@ -142,6 +142,21 @@ describe('unlock and relock across tabs (AT-7, AT-8)', () => {
   });
 });
 
+describe('hidden positions (FR-20)', () => {
+  it('a reader who hides their position finishes silently', async () => {
+    const meera = await srv.connect(await cookie('meera'));
+    const log = record(meera);
+    await join(meera, s.roomId);
+    const rahul = agentFor(srv.app, await cookie('rahul'));
+    await rahul.patch(`/clubs/${s.clubId}/me`, { positionHidden: true }).expect(200);
+    await rahul.put(`/rooms/${s.roomId}/bookmark`, { position: 10, finished: true }).expect(200);
+    await settle(300);
+    expect(log.map(([n]) => n)).not.toContain('finished');
+    expect(log.map(([n]) => n)).not.toContain('bookmark:update');
+    expect(await db.notification.count({ where: { type: 'friend_finished' } })).toBe(0);
+  });
+});
+
 describe('reconnect replay (room:join with lastSeq)', () => {
   it('replays missed events through the gate for the reader as they are now', async () => {
     const first = await srv.connect(await cookie('rahul'));
