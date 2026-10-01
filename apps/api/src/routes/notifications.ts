@@ -18,14 +18,27 @@ export function notificationRoutes(d: Deps): Router {
       where: { userId: user.id, sentAt: { not: null }, droppedAt: null },
       orderBy: { sentAt: 'desc' },
       take: 50,
-      select: { id: true, type: true, payload: true, roomId: true, chapterId: true, postId: true, sentAt: true, readAt: true },
+      select: {
+        id: true,
+        type: true,
+        payload: true,
+        roomId: true,
+        chapterId: true,
+        postId: true,
+        sentAt: true,
+        readAt: true,
+      },
     });
     const unread = await d.db.notification.count({
       where: { userId: user.id, sentAt: { not: null }, droppedAt: null, readAt: null },
     });
     res.json({
       unread,
-      notifications: rows.map((n) => ({ ...n, sentAt: n.sentAt?.toISOString(), read: n.readAt !== null })),
+      notifications: rows.map((n) => ({
+        ...n,
+        sentAt: n.sentAt?.toISOString(),
+        read: n.readAt !== null,
+      })),
     });
   });
 

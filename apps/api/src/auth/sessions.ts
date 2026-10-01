@@ -34,25 +34,42 @@ export function cookieOptions(secure: boolean): CookieOptions {
  * SEC-1: opaque id in an HttpOnly cookie, stored server-side (as a hash),
  * a fresh session on every sign-in, expiring after 30 days idle.
  */
-export async function startSession(db: Db, res: Response, userId: string, secure: boolean, oldToken?: string) {
+export async function startSession(
+  db: Db,
+  res: Response,
+  userId: string,
+  secure: boolean,
+  oldToken?: string,
+) {
   if (oldToken) await db.session.deleteMany({ where: { id: hashToken(oldToken) } });
   const token = newToken();
   await db.session.create({ data: { id: hashToken(token), userId } });
   res.cookie(SESSION_COOKIE, token, cookieOptions(secure));
 }
 
-export async function endSession(db: Db, res: Response, token: string | undefined, secure: boolean) {
+export async function endSession(
+  db: Db,
+  res: Response,
+  token: string | undefined,
+  secure: boolean,
+) {
   if (token) await db.session.deleteMany({ where: { id: hashToken(token) } });
   res.clearCookie(SESSION_COOKIE, { ...cookieOptions(secure), maxAge: undefined });
 }
 
 /** Resolves a raw cookie token to a user, or null. Shared by HTTP and Socket.IO. */
-export async function userFromToken(db: Db, token: string | undefined, now = new Date()): Promise<{ user: SessionUser; sessionId: string } | null> {
+export async function userFromToken(
+  db: Db,
+  token: string | undefined,
+  now = new Date(),
+): Promise<{ user: SessionUser; sessionId: string } | null> {
   if (!token) return null;
   const id = hashToken(token);
   const session = await db.session.findUnique({
     where: { id },
-    include: { user: { select: { id: true, email: true, name: true, isAdmin: true, deletedAt: true } } },
+    include: {
+      user: { select: { id: true, email: true, name: true, isAdmin: true, deletedAt: true } },
+    },
   });
   if (!session || session.user.deletedAt) return null;
   if (now.getTime() - session.lastSeenAt.getTime() > IDLE_DAYS * DAY) {

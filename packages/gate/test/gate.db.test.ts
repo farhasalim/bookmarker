@@ -64,8 +64,12 @@ describe('reading posts', () => {
 
   it('AT-2: a post above the bookmark is 404, same as one that does not exist', async () => {
     const { viewer } = await access(s.users.meera);
-    await expect(getVisiblePost(db, viewer, postAt(10, s.users.rahul))).rejects.toMatchObject({ status: 404 });
-    await expect(getVisiblePost(db, viewer, '019a0000-0000-7000-8000-000000000000')).rejects.toMatchObject({
+    await expect(getVisiblePost(db, viewer, postAt(10, s.users.rahul))).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(
+      getVisiblePost(db, viewer, '019a0000-0000-7000-8000-000000000000'),
+    ).rejects.toMatchObject({
       status: 404,
     });
   });
@@ -118,7 +122,10 @@ describe('reading posts', () => {
     const first = await listChapterPosts(db, viewer, ch(8), { limit: 1 });
     expect(first.posts).toHaveLength(1);
     expect(first.nextCursor).not.toBeNull();
-    const second = await listChapterPosts(db, viewer, ch(8), { limit: 1, cursor: first.nextCursor! });
+    const second = await listChapterPosts(db, viewer, ch(8), {
+      limit: 1,
+      cursor: first.nextCursor!,
+    });
     expect(second.posts[0]!.id).not.toBe(first.posts[0]!.id);
     expect(second.nextCursor).toBeNull();
   });
@@ -133,7 +140,12 @@ describe('AT-7: unlock payload', () => {
   });
   it('finishing unlocks everything above, including After the book', async () => {
     const { viewer } = await access(s.users.rahul);
-    const posts = await postsUnlockedBetween(db, { ...viewer, finished: true }, 10, Number.POSITIVE_INFINITY);
+    const posts = await postsUnlockedBetween(
+      db,
+      { ...viewer, finished: true },
+      10,
+      Number.POSITIVE_INFINITY,
+    );
     expect(posts.map((p) => p.position).sort((a, b) => a - b)).toEqual([12, 15, 20, 21]);
   });
 });
@@ -141,8 +153,14 @@ describe('AT-7: unlock payload', () => {
 describe('AT-3: writing posts only at the bookmark', () => {
   it('rejects chapters 2 and 4 for a reader at 3, accepts 3', async () => {
     const a = await access(s.users.meera);
-    await expect(createPost(db, a, ch(2), 'x')).rejects.toMatchObject({ status: 403, code: 'NOT_AT_BOOKMARK' });
-    await expect(createPost(db, a, ch(4), 'x')).rejects.toMatchObject({ status: 403, code: 'NOT_AT_BOOKMARK' });
+    await expect(createPost(db, a, ch(2), 'x')).rejects.toMatchObject({
+      status: 403,
+      code: 'NOT_AT_BOOKMARK',
+    });
+    await expect(createPost(db, a, ch(4), 'x')).rejects.toMatchObject({
+      status: 403,
+      code: 'NOT_AT_BOOKMARK',
+    });
     const p = await createPost(db, a, ch(3), 'hello');
     expect(p).toMatchObject({ position: 3, mine: true, body: 'hello' });
   });
@@ -156,12 +174,16 @@ describe('AT-3: writing posts only at the bookmark', () => {
   it('refuses posts before the host confirms the chapter list', async () => {
     await db.room.update({ where: { id: s.roomId }, data: { chaptersConfirmedAt: null } });
     const a = await access(s.users.meera);
-    await expect(createPost(db, a, ch(3), 'x')).rejects.toMatchObject({ code: 'CHAPTERS_NOT_CONFIRMED' });
+    await expect(createPost(db, a, ch(3), 'x')).rejects.toMatchObject({
+      code: 'CHAPTERS_NOT_CONFIRMED',
+    });
   });
 
   it('treats a chapter from another room as missing', async () => {
     const a = await access(s.users.meera);
-    await expect(createPost(db, a, '019a0000-0000-7000-8000-000000000000', 'x')).rejects.toMatchObject({
+    await expect(
+      createPost(db, a, '019a0000-0000-7000-8000-000000000000', 'x'),
+    ).rejects.toMatchObject({
       status: 404,
     });
   });
@@ -205,7 +227,9 @@ describe('FR-12: who may be told about a post', () => {
   });
 
   it('excludes people who left the club', async () => {
-    await db.membership.delete({ where: { clubId_userId: { clubId: s.clubId, userId: s.users.anu } } });
+    await db.membership.delete({
+      where: { clubId_userId: { clubId: s.clubId, userId: s.users.anu } },
+    });
     expect(await postAudience(db, postAt(10, s.users.rahul))).toEqual([]);
   });
 
@@ -219,8 +243,12 @@ describe('FR-12: who may be told about a post', () => {
 describe('moderation', () => {
   it('a host can delete a post, a member cannot delete someone else’s', async () => {
     const target = postAt(1, s.users.meera);
-    await expect(softDeletePost(db, await access(s.users.rahul), target)).rejects.toMatchObject({ status: 404 });
-    await expect(softDeletePost(db, await access(s.users.anu), target)).resolves.toMatchObject({ position: 1 });
+    await expect(softDeletePost(db, await access(s.users.rahul), target)).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(softDeletePost(db, await access(s.users.anu), target)).resolves.toMatchObject({
+      position: 1,
+    });
   });
 });
 
@@ -258,7 +286,10 @@ describe('reviews, ratings and stars', () => {
       where: { userId_roomId: { userId: s.users.anu, roomId: s.roomId } },
       data: { joinedAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
     });
-    const r = await upsertReview(db, (await access(s.users.anu)).viewer, { rating: 2, isPublic: false });
+    const r = await upsertReview(db, (await access(s.users.anu)).viewer, {
+      rating: 2,
+      isPublic: false,
+    });
     expect(r.review.rating).toBe(2);
     expect(r.starsAwarded).toEqual([]);
   });

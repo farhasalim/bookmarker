@@ -12,7 +12,8 @@ export async function locatePost(tx: Tx, postId: string): Promise<{ roomId: stri
 
 export interface ReportItem {
   reportId: string;
-  postId: string;
+  /** Null when the post is beyond the host's bookmark: act on it via reportId instead. */
+  postId: string | null;
   roomId: string;
   position: number;
   reportCount: number;
@@ -28,7 +29,10 @@ export interface ReportItem {
  * (PRD rule 5): a report about a post beyond their bookmark shows the chapter
  * number only. They can still delete it without reading it.
  */
-export async function openReports(tx: Tx, accessByRoom: Map<string, RoomAccess>): Promise<ReportItem[]> {
+export async function openReports(
+  tx: Tx,
+  accessByRoom: Map<string, RoomAccess>,
+): Promise<ReportItem[]> {
   const roomIds = [...accessByRoom.keys()];
   if (roomIds.length === 0) return [];
   const reports = await tx.report.findMany({
@@ -55,10 +59,13 @@ export async function openReports(tx: Tx, accessByRoom: Map<string, RoomAccess>)
     if (seen.has(r.postId)) continue;
     seen.add(r.postId);
     const access = accessByRoom.get(r.post.roomId)!;
-    const visible = canSeePost(access.viewer, { authorId: r.post.authorId, chapterPosition: r.post.chapter.position });
+    const visible = canSeePost(access.viewer, {
+      authorId: r.post.authorId,
+      chapterPosition: r.post.chapter.position,
+    });
     out.push({
       reportId: r.id,
-      postId: r.postId,
+      postId: visible ? r.postId : null,
       roomId: r.post.roomId,
       position: r.post.chapter.position,
       reportCount: r.post._count.reports,
@@ -82,7 +89,10 @@ export async function fileReport(
     where: { id: postId, roomId: access.viewer.roomId, deletedAt: null },
     select: { authorId: true, chapter: { select: { position: true } } },
   });
-  if (!post || !canSeePost(access.viewer, { authorId: post.authorId, chapterPosition: post.chapter.position })) {
+  if (
+    !post ||
+    !canSeePost(access.viewer, { authorId: post.authorId, chapterPosition: post.chapter.position })
+  ) {
     return false;
   }
   await tx.report.upsert({
@@ -93,7 +103,25 @@ export async function fileReport(
   return true;
 }
 
-export async function resolveReportsFor(tx: Tx, postId: string, byUserId: string, now: Date): Promise<void> {
+/** The post behind a report, for a blind delete by a host of that club. */
+export async function postForReport(
+  tx: Tx,
+  reportId: string,
+): Promise<{ postId: string; roomId: string } | null> {
+  const r = await tx.report.findUnique({
+    where: { id: reportId },
+    select: { postId: true, post: { select: { roomId: true, deletedAt: true } } },
+  });
+  if (!r || r.post.deletedAt) return null;
+  return { postId: r.postId, roomId: r.post.roomId };
+}
+
+export async function resolveReportsFor(
+  tx: Tx,
+  postId: string,
+  byUserId: string,
+  now: Date,
+): Promise<void> {
   await tx.report.updateMany({
     where: { postId, resolvedAt: null },
     data: { resolvedAt: now, resolvedById: byUserId },
@@ -105,30 +133,39 @@ export async function resolveReportsFor(tx: Tx, postId: string, byUserId: string
  * cannot leak anyone else's spoilers.
  */
 export async function ownContent(tx: Tx, userId: string) {
-  const [posts, replies, likes, reviews] = await Promise.all([
-    tx.post.findMany({
-      where: { authorId: userId },
-      select: {
-        id: true,
-        body: true,
-        createdAt: true,
-        editedAt: true,
-        deletedAt: true,
-        room: { select: { title: true } },
-        chapter: { select: { position: true, title: true } },
-      },
-      orderBy: { createdAt: 'asc' },
-    }),
-    tx.reply.findMany({
-      where: { authorId: userId },
-      select: { id: true, postId: true, body: true, createdAt: true, deletedAt: true },
-      orderBy: { createdAt: 'asc' },
-    }),
-    tx.like.findMany({ where: { userId }, select: { postId: true, createdAt: true } }),
-    tx.review.findMany({
-      where: { userId },
-      select: { rating: true, body: true, isPublic: true, createdAt: true, updatedAt: true, room: { select: { title: true } } },
-    }),
-  ]);
+  // Sequential on purpose: a transaction is one connection; don't overlap queries on it.
+  const posts = await tx.post.findMany({
+    where: { authorId: userId },
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      editedAt: true,
+      deletedAt: true,
+      room: { select: { title: true } },
+      chapter: { select: { position: true, title: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  const replies = await tx.reply.findMany({
+    where: { authorId: userId },
+    select: { id: true, postId: true, body: true, createdAt: true, deletedAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  const likes = await tx.like.findMany({
+    where: { userId },
+    select: { postId: true, createdAt: true },
+  });
+  const reviews = await tx.review.findMany({
+    where: { userId },
+    select: {
+      rating: true,
+      body: true,
+      isPublic: true,
+      createdAt: true,
+      updatedAt: true,
+      room: { select: { title: true } },
+    },
+  });
   return { posts, replies, likes, reviews };
 }

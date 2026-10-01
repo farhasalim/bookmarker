@@ -47,10 +47,17 @@ export function roomRoutes(d: Deps): Router {
     const now = d.now();
     const room = await d.db.$transaction(async (tx) => {
       await requireHost(tx, user.id, clubId);
-      const club = await tx.club.findUniqueOrThrow({ where: { id: clubId }, select: { plan: true } });
+      const club = await tx.club.findUniqueOrThrow({
+        where: { id: clubId },
+        select: { plan: true },
+      });
       const current = await tx.room.count({ where: { clubId, status: 'current' } });
       if (!withinLimit(limitsFor(club.plan).maxCurrentRooms, current)) {
-        throw new HttpError(409, 'PLAN_LIMIT', 'Finish or close the current book before opening another');
+        throw new HttpError(
+          409,
+          'PLAN_LIMIT',
+          'Finish or close the current book before opening another',
+        );
       }
       const room = await tx.room.create({
         data: {
@@ -63,7 +70,11 @@ export function roomRoutes(d: Deps): Router {
           chapters: {
             create: [
               ...input.chapters.map((c, i) => ({ position: i + 1, title: c.title })),
-              { position: input.chapters.length + 1, title: 'After the book', kind: 'after_book' as const },
+              {
+                position: input.chapters.length + 1,
+                title: 'After the book',
+                kind: 'after_book' as const,
+              },
             ],
           },
         },
@@ -73,13 +84,22 @@ export function roomRoutes(d: Deps): Router {
         select: { userId: true, user: { select: { notificationPrefs: true } } },
       });
       await tx.bookmark.createMany({
-        data: members.map((m) => ({ userId: m.userId, roomId: room.id, joinedAt: now, movedAt: now })),
+        data: members.map((m) => ({
+          userId: m.userId,
+          roomId: room.id,
+          joinedAt: now,
+          movedAt: now,
+        })),
       });
       await tx.nudgeSchedule.createMany({
         data: members.map((m) => ({
           userId: m.userId,
           roomId: room.id,
-          nextReminderAt: reminderDue(now, null, readPrefs(m.user.notificationPrefs).reminderEveryDays),
+          nextReminderAt: reminderDue(
+            now,
+            null,
+            readPrefs(m.user.notificationPrefs).reminderEveryDays,
+          ),
         })),
       });
       return room;
@@ -138,7 +158,11 @@ export function roomRoutes(d: Deps): Router {
     const { result, events } = await d.db.$transaction(async (tx) => {
       const access = await requireRoomAccess(tx, user.id, roomId);
       if (!access.chaptersConfirmed) {
-        throw new HttpError(409, 'CHAPTERS_NOT_CONFIRMED', 'The host is still setting up the chapters');
+        throw new HttpError(
+          409,
+          'CHAPTERS_NOT_CONFIRMED',
+          'The host is still setting up the chapters',
+        );
       }
       const chapterCount = access.afterBookPosition - 1;
       if (input.position > chapterCount) {
@@ -153,16 +177,32 @@ export function roomRoutes(d: Deps): Router {
 
       await tx.bookmark.upsert({
         where: { userId_roomId: { userId: user.id, roomId } },
-        create: { userId: user.id, roomId, position: after.position, finished: after.finished, movedAt: now, joinedAt: now },
+        create: {
+          userId: user.id,
+          roomId,
+          position: after.position,
+          finished: after.finished,
+          movedAt: now,
+          joinedAt: now,
+        },
         update: { position: after.position, finished: after.finished, movedAt: now },
       });
 
       if (after.finished) {
         await tx.nudgeSchedule.deleteMany({ where: { userId: user.id, roomId } });
       } else {
-        const u = await tx.user.findUniqueOrThrow({ where: { id: user.id }, select: { notificationPrefs: true } });
-        const sched = await tx.nudgeSchedule.findUnique({ where: { userId_roomId: { userId: user.id, roomId } } });
-        const next = reminderDue(now, sched?.lastReminderAt ?? null, readPrefs(u.notificationPrefs).reminderEveryDays);
+        const u = await tx.user.findUniqueOrThrow({
+          where: { id: user.id },
+          select: { notificationPrefs: true },
+        });
+        const sched = await tx.nudgeSchedule.findUnique({
+          where: { userId_roomId: { userId: user.id, roomId } },
+        });
+        const next = reminderDue(
+          now,
+          sched?.lastReminderAt ?? null,
+          readPrefs(u.notificationPrefs).reminderEveryDays,
+        );
         await tx.nudgeSchedule.upsert({
           where: { userId_roomId: { userId: user.id, roomId } },
           create: { userId: user.id, roomId, nextReminderAt: next },
@@ -185,10 +225,19 @@ export function roomRoutes(d: Deps): Router {
         );
       }
       if (after.finished && !before.finished) {
-        const room = await tx.room.findUniqueOrThrow({ where: { id: roomId }, select: { title: true } });
+        const room = await tx.room.findUniqueOrThrow({
+          where: { id: roomId },
+          select: { title: true },
+        });
         await queueFinishedNotifications(
           tx,
-          { userId: user.id, userName: user.name, roomId, clubId: access.clubId, roomTitle: room.title },
+          {
+            userId: user.id,
+            userName: user.name,
+            roomId,
+            clubId: access.clubId,
+            roomTitle: room.title,
+          },
           now,
         );
       }

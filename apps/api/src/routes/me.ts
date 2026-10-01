@@ -42,7 +42,10 @@ export function meRoutes(d: Deps): Router {
                     coverUrl: true,
                     chaptersConfirmedAt: true,
                     _count: { select: { chapters: { where: { kind: 'chapter' } } } },
-                    bookmarks: { where: { userId: user.id }, select: { position: true, finished: true } },
+                    bookmarks: {
+                      where: { userId: user.id },
+                      select: { position: true, finished: true },
+                    },
                   },
                 },
               },
@@ -82,7 +85,10 @@ export function meRoutes(d: Deps): Router {
   r.patch('/me', writes, async (req, res) => {
     const user = me(req);
     const input = UpdateMe.parse(req.body);
-    const current = await d.db.user.findUniqueOrThrow({ where: { id: user.id }, select: { notificationPrefs: true } });
+    const current = await d.db.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { notificationPrefs: true },
+    });
     const prefs = input.notificationPrefs
       ? { ...readPrefs(current.notificationPrefs), ...input.notificationPrefs }
       : undefined;
@@ -95,7 +101,11 @@ export function meRoutes(d: Deps): Router {
       },
       select: { name: true, timezone: true, notificationPrefs: true },
     });
-    res.json({ name: u.name, timezone: u.timezone, notificationPrefs: readPrefs(u.notificationPrefs) });
+    res.json({
+      name: u.name,
+      timezone: u.timezone,
+      notificationPrefs: readPrefs(u.notificationPrefs),
+    });
   });
 
   /* ---------------- privacy (SEC-11) ---------------- */
@@ -105,21 +115,46 @@ export function meRoutes(d: Deps): Router {
     const data = await d.db.$transaction(async (tx) => {
       const profile = await tx.user.findUniqueOrThrow({
         where: { id: user.id },
-        select: { id: true, email: true, name: true, timezone: true, createdAt: true, notificationPrefs: true, starTotal: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          timezone: true,
+          createdAt: true,
+          notificationPrefs: true,
+          starTotal: true,
+        },
       });
       const memberships = await tx.membership.findMany({
         where: { userId: user.id },
-        select: { role: true, positionHidden: true, joinedAt: true, club: { select: { name: true } } },
+        select: {
+          role: true,
+          positionHidden: true,
+          joinedAt: true,
+          club: { select: { name: true } },
+        },
       });
       const bookmarks = await tx.bookmark.findMany({
         where: { userId: user.id },
-        select: { position: true, finished: true, movedAt: true, room: { select: { title: true } } },
+        select: {
+          position: true,
+          finished: true,
+          movedAt: true,
+          room: { select: { title: true } },
+        },
       });
       const stars = await tx.starEvent.findMany({
         where: { userId: user.id },
         select: { reason: true, createdAt: true, room: { select: { title: true } } },
       });
-      return { exportedAt: d.now().toISOString(), profile, memberships, bookmarks, stars, ...(await ownContent(tx, user.id)) };
+      return {
+        exportedAt: d.now().toISOString(),
+        profile,
+        memberships,
+        bookmarks,
+        stars,
+        ...(await ownContent(tx, user.id)),
+      };
     });
     res.setHeader('Content-Disposition', 'attachment; filename="bookmarker-export.json"');
     res.json(data);
@@ -132,9 +167,14 @@ export function meRoutes(d: Deps): Router {
   r.delete('/me', writes, async (req, res) => {
     const user = me(req);
     await d.db.$transaction(async (tx) => {
-      const hosted = await tx.membership.findMany({ where: { userId: user.id, role: 'host' }, select: { clubId: true } });
+      const hosted = await tx.membership.findMany({
+        where: { userId: user.id, role: 'host' },
+        select: { clubId: true },
+      });
       for (const { clubId } of hosted) {
-        const otherHosts = await tx.membership.count({ where: { clubId, role: 'host', userId: { not: user.id } } });
+        const otherHosts = await tx.membership.count({
+          where: { clubId, role: 'host', userId: { not: user.id } },
+        });
         if (otherHosts > 0) continue;
         const heir = await tx.membership.findFirst({
           where: { clubId, userId: { not: user.id }, user: { deletedAt: null } },
@@ -182,7 +222,14 @@ export function meRoutes(d: Deps): Router {
       if (userId !== viewer.id && shared.length === 0) throw notFound();
       const u = await tx.user.findUnique({
         where: { id: userId },
-        select: { id: true, name: true, avatarUrl: true, starTotal: true, createdAt: true, deletedAt: true },
+        select: {
+          id: true,
+          name: true,
+          avatarUrl: true,
+          starTotal: true,
+          createdAt: true,
+          deletedAt: true,
+        },
       });
       if (!u || u.deletedAt) throw notFound();
       const books = await profileBooks(tx, userId, viewer.id);

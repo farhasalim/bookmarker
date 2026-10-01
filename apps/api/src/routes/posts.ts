@@ -23,7 +23,10 @@ import { queuePostNotifications, queueReplyNotification } from '../services/noti
 
 /** Finds the room a chapter belongs to, then the caller's access to it (404 if none). */
 async function accessForChapter(tx: Tx, userId: string, chapterId: string) {
-  const chapter = await tx.chapter.findUnique({ where: { id: chapterId }, select: { roomId: true } });
+  const chapter = await tx.chapter.findUnique({
+    where: { id: chapterId },
+    select: { roomId: true },
+  });
   if (!chapter) throw notFound();
   return requireRoomAccess(tx, userId, chapter.roomId);
 }
@@ -58,7 +61,10 @@ export function postRoutes(d: Deps): Router {
     const { post, event } = await d.db.$transaction(async (tx) => {
       const access = await accessForChapter(tx, user.id, chapterId);
       const post = await createPost(tx, access, chapterId, body);
-      const room = await tx.room.findUniqueOrThrow({ where: { id: access.viewer.roomId }, select: { title: true } });
+      const room = await tx.room.findUniqueOrThrow({
+        where: { id: access.viewer.roomId },
+        select: { title: true },
+      });
       // Audience decided by the gate NOW; re-checked by the worker at send time.
       const audience = await postAudience(tx, post.id);
       await queuePostNotifications(
@@ -151,7 +157,10 @@ export function postRoutes(d: Deps): Router {
     const { reply, event } = await d.db.$transaction(async (tx) => {
       const { viewer } = await accessForPost(tx, user.id, postId);
       const out = await createReply(tx, viewer, postId, body);
-      const room = await tx.room.findUniqueOrThrow({ where: { id: viewer.roomId }, select: { title: true } });
+      const room = await tx.room.findUniqueOrThrow({
+        where: { id: viewer.roomId },
+        select: { title: true },
+      });
       await queueReplyNotification(
         tx,
         {

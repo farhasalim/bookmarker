@@ -15,7 +15,10 @@ export interface BookSearch {
   search(q: string): Promise<BookHit[]>;
 }
 
-type Cache = { get(k: string): Promise<string | null>; set(k: string, v: string, ttlSeconds: number): Promise<void> };
+type Cache = {
+  get(k: string): Promise<string | null>;
+  set(k: string, v: string, ttlSeconds: number): Promise<void>;
+};
 
 export function memoryCache(): Cache {
   const m = new Map<string, { v: string; until: number }>();
@@ -46,7 +49,9 @@ export function openLibrary(cache: Cache, fetchImpl: typeof fetch = fetch): Book
         signal: AbortSignal.timeout(4000),
       });
       if (!res.ok) return null;
-      const ed = (await res.json()) as { table_of_contents?: Array<{ title?: string; label?: string }> };
+      const ed = (await res.json()) as {
+        table_of_contents?: Array<{ title?: string; label?: string }>;
+      };
       const titles = (ed.table_of_contents ?? [])
         .map((t) => (t.title ?? t.label ?? '').trim())
         .filter((t) => t.length > 0);

@@ -35,8 +35,15 @@ export async function postAudience(tx: Tx, postId: string): Promise<Viewer[]> {
   });
   // Belt and braces: re-apply the pure rule to whatever the query returned.
   return bookmarks
-    .map((b) => ({ userId: b.userId, roomId: post.roomId, position: b.position, finished: b.finished }))
-    .filter((v) => canSeePost(v, { authorId: post.authorId, chapterPosition: post.chapter.position }));
+    .map((b) => ({
+      userId: b.userId,
+      roomId: post.roomId,
+      position: b.position,
+      finished: b.finished,
+    }))
+    .filter((v) =>
+      canSeePost(v, { authorId: post.authorId, chapterPosition: post.chapter.position }),
+    );
 }
 
 /**

@@ -33,7 +33,15 @@ export class Clock {
 
 export const fakeBooks: BookSearch = {
   async search(q) {
-    return [{ title: `Result for ${q}`, author: 'A. Author', isbn: '9780000000000', coverUrl: null, chapterTitles: ['One', 'Two'] }];
+    return [
+      {
+        title: `Result for ${q}`,
+        author: 'A. Author',
+        isbn: '9780000000000',
+        coverUrl: null,
+        chapterTitles: ['One', 'Two'],
+      },
+    ];
   },
 };
 

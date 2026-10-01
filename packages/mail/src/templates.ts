@@ -8,9 +8,17 @@ import type { MailMessage } from './mailer.ts';
  */
 
 const esc = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+  s.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+  );
 
-function layout(title: string, paragraphs: string[], cta: { label: string; url: string }, footerUrl: string) {
+function layout(
+  title: string,
+  paragraphs: string[],
+  cta: { label: string; url: string },
+  footerUrl: string,
+) {
   const html = `<!doctype html><html><body style="margin:0;background:#DBEADA;font-family:Georgia,serif;color:#1B1F1C">
 <div style="max-width:520px;margin:0 auto;padding:32px 24px">
 <h1 style="font-weight:500;font-size:26px;margin:0 0 16px">${esc(title)}</h1>
@@ -33,7 +41,10 @@ export function magicLinkEmail(to: string, url: string, l: Links): MailMessage {
     subject: 'Your BookMarker sign-in link',
     ...layout(
       'Sign in to BookMarker',
-      ['This link signs you in. It works once and expires in 15 minutes.', 'If you did not ask for it, ignore this email.'],
+      [
+        'This link signs you in. It works once and expires in 15 minutes.',
+        'If you did not ask for it, ignore this email.',
+      ],
       { label: 'Sign in', url },
       settingsUrl(l),
     ),

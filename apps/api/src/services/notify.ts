@@ -17,7 +17,14 @@ export function nextBatchBoundary(now: Date): Date {
  */
 export async function queuePostNotifications(
   tx: Tx,
-  input: { postId: string; roomId: string; chapterId: string; position: number; authorName: string; roomTitle: string },
+  input: {
+    postId: string;
+    roomId: string;
+    chapterId: string;
+    position: number;
+    authorName: string;
+    roomTitle: string;
+  },
   audience: Viewer[],
   now: Date,
 ): Promise<number> {
@@ -31,7 +38,11 @@ export async function queuePostNotifications(
       chapterId: input.chapterId,
       postId: input.postId,
       sendAfter,
-      payload: { authorName: input.authorName, position: input.position, roomTitle: input.roomTitle },
+      payload: {
+        authorName: input.authorName,
+        position: input.position,
+        roomTitle: input.roomTitle,
+      },
     })),
   });
   return res.count;
@@ -58,7 +69,11 @@ export async function queueReplyNotification(
       roomId: input.roomId,
       postId: input.postId,
       sendAfter: now,
-      payload: { replierName: input.replierName, position: input.position, roomTitle: input.roomTitle },
+      payload: {
+        replierName: input.replierName,
+        position: input.position,
+        roomTitle: input.roomTitle,
+      },
     },
   });
 }

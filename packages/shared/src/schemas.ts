@@ -38,7 +38,10 @@ export const CreateRoom = z.object({
   author: z.string().trim().max(300).optional(),
   coverUrl: z.url().max(1000).optional(),
   isbn: z.string().trim().max(20).optional(),
-  chapters: z.array(ChapterInput.omit({ id: true })).min(1).max(LIMITS.maxChapters),
+  chapters: z
+    .array(ChapterInput.omit({ id: true }))
+    .min(1)
+    .max(LIMITS.maxChapters),
 });
 
 export const ReplaceChapters = z.object({

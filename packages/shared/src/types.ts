@@ -92,7 +92,13 @@ export interface ServerToClientEvents {
   'reply:new': (e: { roomId: string; seq: number; reply: ReplyDTO }) => void;
   'like:update': (e: { roomId: string; seq: number; postId: string; count: number }) => void;
   'waiting:count': (e: { roomId: string; seq: number; position: number; count: number }) => void;
-  'bookmark:update': (e: { roomId: string; seq: number; userId: string; position: number; finished: boolean }) => void;
+  'bookmark:update': (e: {
+    roomId: string;
+    seq: number;
+    userId: string;
+    position: number;
+    finished: boolean;
+  }) => void;
   unlock: (e: { roomId: string; seq: number } & UnlockResult) => void;
   relock: (e: { roomId: string; seq: number; position: number; finished: boolean }) => void;
   finished: (e: { roomId: string; seq: number; userId: string }) => void;
@@ -104,6 +110,9 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  'room:join': (e: { roomId: string; lastSeq?: number }, ack?: (r: { ok: boolean; seq?: number }) => void) => void;
+  'room:join': (
+    e: { roomId: string; lastSeq?: number },
+    ack?: (r: { ok: boolean; seq?: number }) => void,
+  ) => void;
   'room:leave': (e: { roomId: string }) => void;
 }

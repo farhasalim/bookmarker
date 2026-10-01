@@ -17,7 +17,9 @@ export async function findOrCreateUser(
   const email = input.email.trim().toLowerCase();
   return db.$transaction(async (tx) => {
     const identity = await tx.authIdentity.findUnique({
-      where: { provider_providerSubject: { provider: input.provider, providerSubject: input.subject } },
+      where: {
+        provider_providerSubject: { provider: input.provider, providerSubject: input.subject },
+      },
       select: { user: { select: { id: true, deletedAt: true } } },
     });
     if (identity) return { id: identity.user.id, deleted: identity.user.deletedAt !== null };

@@ -46,7 +46,11 @@ export function authRoutes(d: Deps): Router {
       return res.redirect(303, `${d.config.APP_URL}/signin?error=link`);
     }
     const row = await d.db.magicToken.findUniqueOrThrow({ where: { tokenHash: hashToken(token) } });
-    const user = await findOrCreateUser(d.db, { email: row.email, provider: 'email', subject: row.email });
+    const user = await findOrCreateUser(d.db, {
+      email: row.email,
+      provider: 'email',
+      subject: row.email,
+    });
     if (user.deleted) return res.redirect(303, `${d.config.APP_URL}/signin?error=deleted`);
     await startSession(d.db, res, user.id, secure, req.cookies?.[SESSION_COOKIE]);
     res.redirect(303, `${d.config.APP_URL}/home`);

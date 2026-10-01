@@ -71,10 +71,16 @@ export async function chapterCounts(
   tx: Tx,
   viewer: Viewer,
 ): Promise<{ visible: Map<string, number>; waiting: Map<string, number> }> {
-  const [visible, waiting] = await Promise.all([
-    tx.post.groupBy({ by: ['chapterId'], where: visiblePostsWhere(viewer), _count: { _all: true } }),
-    tx.post.groupBy({ by: ['chapterId'], where: waitingPostsWhere(viewer), _count: { _all: true } }),
-  ]);
+  const visible = await tx.post.groupBy({
+    by: ['chapterId'],
+    where: visiblePostsWhere(viewer),
+    _count: { _all: true },
+  });
+  const waiting = await tx.post.groupBy({
+    by: ['chapterId'],
+    where: waitingPostsWhere(viewer),
+    _count: { _all: true },
+  });
   return {
     visible: new Map(visible.map((g) => [g.chapterId, g._count._all])),
     waiting: new Map(waiting.map((g) => [g.chapterId, g._count._all])),
@@ -110,7 +116,11 @@ export async function createPost(
 ): Promise<PostDTO> {
   const { viewer } = access;
   if (!access.chaptersConfirmed) {
-    throw new GateError(409, 'CHAPTERS_NOT_CONFIRMED', 'The host has not confirmed the chapter list yet');
+    throw new GateError(
+      409,
+      'CHAPTERS_NOT_CONFIRMED',
+      'The host has not confirmed the chapter list yet',
+    );
   }
   const chapter = await tx.chapter.findFirst({
     where: { id: chapterId, roomId: viewer.roomId },
@@ -118,7 +128,11 @@ export async function createPost(
   });
   if (!chapter) throw notFound();
   if (chapter.position !== postablePosition(viewer, access.afterBookPosition)) {
-    throw new GateError(403, 'NOT_AT_BOOKMARK', 'You can only post at the chapter your bookmark is on');
+    throw new GateError(
+      403,
+      'NOT_AT_BOOKMARK',
+      'You can only post at the chapter your bookmark is on',
+    );
   }
   const row = await tx.post.create({
     data: { roomId: viewer.roomId, chapterId, authorId: viewer.userId, body },
@@ -127,7 +141,12 @@ export async function createPost(
   return toPostDTO(row, viewer);
 }
 
-export async function editOwnPost(tx: Tx, viewer: Viewer, postId: string, body: string): Promise<PostDTO> {
+export async function editOwnPost(
+  tx: Tx,
+  viewer: Viewer,
+  postId: string,
+  body: string,
+): Promise<PostDTO> {
   const existing = await tx.post.findFirst({
     where: { id: postId, roomId: viewer.roomId, authorId: viewer.userId, deletedAt: null },
     select: { id: true },
@@ -195,7 +214,11 @@ export async function createReply(
     data: { postId, authorId: viewer.userId, body },
     include: replyInclude,
   });
-  return { reply: toReplyDTO(row, viewer), postAuthorId: post.authorId, position: post.chapter.position };
+  return {
+    reply: toReplyDTO(row, viewer),
+    postAuthorId: post.authorId,
+    position: post.chapter.position,
+  };
 }
 
 export async function setLike(
@@ -229,6 +252,9 @@ export async function getVisibleReply(tx: Tx, viewer: Viewer, replyId: string): 
 }
 
 /** Re-check, at send time, whether `viewer` may see `postId` (notifications, sockets). */
-export function viewerCanSee(viewer: Viewer, post: { authorId: string; position: number }): boolean {
+export function viewerCanSee(
+  viewer: Viewer,
+  post: { authorId: string; position: number },
+): boolean {
   return canSeePost(viewer, { authorId: post.authorId, chapterPosition: post.position });
 }

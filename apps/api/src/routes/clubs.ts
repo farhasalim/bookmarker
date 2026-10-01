@@ -16,7 +16,6 @@ import { requireHost, requireMember } from '../http/access.ts';
 import { limit } from '../http/rate-limit.ts';
 import { hashToken, newToken } from '../lib/tokens.ts';
 
-
 const DAY = 24 * 60 * 60 * 1000;
 
 export function clubRoutes(d: Deps): Router {
@@ -49,12 +48,23 @@ export function clubRoutes(d: Deps): Router {
       include: {
         rooms: {
           orderBy: { openedAt: 'desc' },
-          select: { id: true, title: true, author: true, coverUrl: true, status: true, openedAt: true },
+          select: {
+            id: true,
+            title: true,
+            author: true,
+            coverUrl: true,
+            status: true,
+            openedAt: true,
+          },
         },
         memberships: {
           where: { user: { deletedAt: null } },
           orderBy: { joinedAt: 'asc' },
-          select: { role: true, joinedAt: true, user: { select: { id: true, name: true, avatarUrl: true } } },
+          select: {
+            role: true,
+            joinedAt: true,
+            user: { select: { id: true, name: true, avatarUrl: true } },
+          },
         },
       },
     });
@@ -145,8 +155,10 @@ export function clubRoutes(d: Deps): Router {
       include: { club: { select: { id: true, name: true, plan: true } } },
     });
     if (!invite) throw new HttpError(404, 'INVITE_INVALID', 'This invite link is not valid');
-    if (invite.revokedAt) throw new HttpError(410, 'INVITE_REVOKED', 'This invite link was turned off by the host');
-    if (invite.expiresAt <= d.now()) throw new HttpError(410, 'INVITE_EXPIRED', 'This invite link has expired');
+    if (invite.revokedAt)
+      throw new HttpError(410, 'INVITE_REVOKED', 'This invite link was turned off by the host');
+    if (invite.expiresAt <= d.now())
+      throw new HttpError(410, 'INVITE_EXPIRED', 'This invite link has expired');
     if (invite.maxUses !== null && invite.uses >= invite.maxUses) {
       throw new HttpError(410, 'INVITE_USED_UP', 'This invite link has been used up');
     }
@@ -163,7 +175,9 @@ export function clubRoutes(d: Deps): Router {
     const user = me(req);
     const invite = await checkInvite(String(req.params.token));
     const clubId = invite.club.id;
-    const already = await d.db.membership.findUnique({ where: { clubId_userId: { clubId, userId: user.id } } });
+    const already = await d.db.membership.findUnique({
+      where: { clubId_userId: { clubId, userId: user.id } },
+    });
     if (already) return res.json({ clubId, alreadyMember: true });
 
     const now = d.now();
@@ -181,9 +195,15 @@ export function clubRoutes(d: Deps): Router {
         },
         data: { uses: { increment: 1 } },
       });
-      if (used.count !== 1) throw new HttpError(410, 'INVITE_USED_UP', 'This invite link has been used up');
-      await tx.membership.create({ data: { clubId, userId: user.id, role: 'member', joinedAt: now } });
-      const rooms = await tx.room.findMany({ where: { clubId, status: 'current' }, select: { id: true } });
+      if (used.count !== 1)
+        throw new HttpError(410, 'INVITE_USED_UP', 'This invite link has been used up');
+      await tx.membership.create({
+        data: { clubId, userId: user.id, role: 'member', joinedAt: now },
+      });
+      const rooms = await tx.room.findMany({
+        where: { clubId, status: 'current' },
+        select: { id: true },
+      });
       for (const room of rooms) {
         await tx.bookmark.upsert({
           where: { userId_roomId: { userId: user.id, roomId: room.id } },
@@ -211,7 +231,9 @@ export function clubRoutes(d: Deps): Router {
       throw new HttpError(403, 'FORBIDDEN', 'Only a host can remove members');
     }
     await d.db.$transaction(async (tx) => {
-      const target = await tx.membership.findUnique({ where: { clubId_userId: { clubId, userId: targetId } } });
+      const target = await tx.membership.findUnique({
+        where: { clubId_userId: { clubId, userId: targetId } },
+      });
       if (!target) throw notFound();
       if (target.role === 'host') {
         const hosts = await tx.membership.count({ where: { clubId, role: 'host' } });
@@ -237,10 +259,15 @@ export function clubRoutes(d: Deps): Router {
     await d.db.$transaction(async (tx) => {
       await requireMember(tx, targetId, clubId);
       if (role === 'member') {
-        const hosts = await tx.membership.count({ where: { clubId, role: 'host', userId: { not: targetId } } });
+        const hosts = await tx.membership.count({
+          where: { clubId, role: 'host', userId: { not: targetId } },
+        });
         if (hosts === 0) throw new HttpError(409, 'LAST_HOST', 'A club needs at least one host');
       }
-      await tx.membership.update({ where: { clubId_userId: { clubId, userId: targetId } }, data: { role } });
+      await tx.membership.update({
+        where: { clubId_userId: { clubId, userId: targetId } },
+        data: { role },
+      });
     });
     res.json({ role });
   });

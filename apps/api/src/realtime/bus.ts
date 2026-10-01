@@ -8,12 +8,58 @@ import type { Tx } from '@bookmarker/db';
  * event log nor Redis ever holds post text.
  */
 export type RoomEvent =
-  | { type: 'post:new'; roomId: string; seq: number; postId: string; chapterId: string; position: number; authorId: string }
-  | { type: 'post:update'; roomId: string; seq: number; postId: string; position: number; authorId: string }
-  | { type: 'reply:new'; roomId: string; seq: number; postId: string; replyId: string; position: number; postAuthorId: string }
-  | { type: 'like:update'; roomId: string; seq: number; postId: string; position: number; authorId: string; count: number }
-  | { type: 'bookmark'; roomId: string; seq: number; userId: string; from: { position: number; finished: boolean }; to: { position: number; finished: boolean } }
-  | { type: 'moderation'; roomId: string; seq: number; postId: string; position: number; authorId: string; chapterId: string }
+  | {
+      type: 'post:new';
+      roomId: string;
+      seq: number;
+      postId: string;
+      chapterId: string;
+      position: number;
+      authorId: string;
+    }
+  | {
+      type: 'post:update';
+      roomId: string;
+      seq: number;
+      postId: string;
+      position: number;
+      authorId: string;
+    }
+  | {
+      type: 'reply:new';
+      roomId: string;
+      seq: number;
+      postId: string;
+      replyId: string;
+      position: number;
+      postAuthorId: string;
+    }
+  | {
+      type: 'like:update';
+      roomId: string;
+      seq: number;
+      postId: string;
+      position: number;
+      authorId: string;
+      count: number;
+    }
+  | {
+      type: 'bookmark';
+      roomId: string;
+      seq: number;
+      userId: string;
+      from: { position: number; finished: boolean };
+      to: { position: number; finished: boolean };
+    }
+  | {
+      type: 'moderation';
+      roomId: string;
+      seq: number;
+      postId: string;
+      position: number;
+      authorId: string;
+      chapterId: string;
+    }
   | { type: 'chapters'; roomId: string; seq: number };
 
 type WithoutSeq<T> = T extends unknown ? Omit<T, 'seq'> : never;

@@ -3,7 +3,11 @@ import { loadRoomAccess, type RoomAccess } from '@bookmarker/gate';
 import { HttpError, notFound } from './errors.ts';
 
 /** Room access or 404 (SEC-4): non-members never learn the room exists. */
-export async function requireRoomAccess(tx: Tx, userId: string, roomId: string): Promise<RoomAccess> {
+export async function requireRoomAccess(
+  tx: Tx,
+  userId: string,
+  roomId: string,
+): Promise<RoomAccess> {
   const access = await loadRoomAccess(tx, userId, roomId);
   if (!access) throw notFound();
   return access;

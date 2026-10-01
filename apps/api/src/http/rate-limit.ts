@@ -54,7 +54,8 @@ export function limit(
   const { limit: max, window } = LIMITS[name];
   return async (req, _res, next) => {
     const ok = await limiter.hit(`${name}:${keyOf(req)}`, max, window);
-    if (!ok) return next(new HttpError(429, 'RATE_LIMITED', 'Too many requests. Try again shortly.'));
+    if (!ok)
+      return next(new HttpError(429, 'RATE_LIMITED', 'Too many requests. Try again shortly.'));
     next();
   };
 }

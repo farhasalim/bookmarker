@@ -12,7 +12,9 @@ beforeEach(async () => {
 afterAll(() => db.$disconnect());
 
 function linkFrom(text: string): string {
-  const m = text.match(/(http:\/\/localhost:4000\/api\/v1\/auth\/magic-link\/verify\?token=[\w-]+)/);
+  const m = text.match(
+    /(http:\/\/localhost:4000\/api\/v1\/auth\/magic-link\/verify\?token=[\w-]+)/,
+  );
   if (!m) throw new Error('no link in email');
   return m[1]!.replace('http://localhost:4000', '');
 }
@@ -61,9 +63,13 @@ describe('magic link sign-in (FR-1, SEC-3)', () => {
 
   it('rate-limits sign-in attempts per IP (SEC-6: 10 per 15 min)', async () => {
     for (let i = 0; i < 10; i++) {
-      await agentFor(t.app).post('/auth/magic-link', { email: `r${i}@example.test` }).expect(202);
+      await agentFor(t.app)
+        .post('/auth/magic-link', { email: `r${i}@example.test` })
+        .expect(202);
     }
-    const res = await agentFor(t.app).post('/auth/magic-link', { email: 'r11@example.test' }).expect(429);
+    const res = await agentFor(t.app)
+      .post('/auth/magic-link', { email: 'r11@example.test' })
+      .expect(429);
     expect(res.body.error.code).toBe('RATE_LIMITED');
   });
 });
@@ -96,7 +102,9 @@ describe('sessions and CSRF (SEC-1, SEC-8)', () => {
     const u = await db.user.create({ data: { email: 'idle@example.test', name: 'Idle' } });
     const { sessionCookie } = await import('./helpers.ts');
     const cookie = await sessionCookie(u.id);
-    await db.session.updateMany({ data: { lastSeenAt: new Date(Date.now() - 31 * 24 * 3600 * 1000) } });
+    await db.session.updateMany({
+      data: { lastSeenAt: new Date(Date.now() - 31 * 24 * 3600 * 1000) },
+    });
     await agentFor(t.app, cookie).get('/me').expect(401);
   });
 
@@ -111,9 +119,18 @@ describe('sessions and CSRF (SEC-1, SEC-8)', () => {
 });
 
 describe('Google ID token claims (SEC-2)', () => {
-  const good = { sub: '123', email: 'g@example.test', email_verified: true, nonce: 'n1', name: 'G' };
+  const good = {
+    sub: '123',
+    email: 'g@example.test',
+    email_verified: true,
+    nonce: 'n1',
+    name: 'G',
+  };
   it('accepts matching nonce and verified email', () => {
-    expect(profileFromClaims(good, 'n1')).toMatchObject({ subject: '123', email: 'g@example.test' });
+    expect(profileFromClaims(good, 'n1')).toMatchObject({
+      subject: '123',
+      email: 'g@example.test',
+    });
   });
   it('rejects a wrong nonce', () => {
     expect(() => profileFromClaims(good, 'other')).toThrow('nonce');

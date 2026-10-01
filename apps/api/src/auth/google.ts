@@ -21,7 +21,11 @@ export interface GoogleProfile {
 
 const ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 
-export function googleAuth(clientId: string, clientSecret: string, redirectUri: string): GoogleAuth {
+export function googleAuth(
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+): GoogleAuth {
   const client = new Google(clientId, clientSecret, redirectUri);
   const jwks = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
   return {
@@ -29,21 +33,31 @@ export function googleAuth(clientId: string, clientSecret: string, redirectUri: 
       const state = generateState();
       const codeVerifier = generateCodeVerifier();
       const nonce = randomBytes(16).toString('base64url');
-      const url = client.createAuthorizationURL(state, codeVerifier, ['openid', 'email', 'profile']);
+      const url = client.createAuthorizationURL(state, codeVerifier, [
+        'openid',
+        'email',
+        'profile',
+      ]);
       url.searchParams.set('nonce', nonce);
       url.searchParams.set('prompt', 'select_account');
       return { url, state, codeVerifier, nonce };
     },
     async finish(code, codeVerifier, nonce) {
       const tokens = await client.validateAuthorizationCode(code, codeVerifier);
-      const { payload } = await jwtVerify(tokens.idToken(), jwks, { issuer: ISSUERS, audience: clientId });
+      const { payload } = await jwtVerify(tokens.idToken(), jwks, {
+        issuer: ISSUERS,
+        audience: clientId,
+      });
       return profileFromClaims(payload, nonce);
     },
   };
 }
 
 /** Exported for tests: claim checks after the signature is verified. */
-export function profileFromClaims(p: JWTPayload & Record<string, unknown>, nonce: string): GoogleProfile {
+export function profileFromClaims(
+  p: JWTPayload & Record<string, unknown>,
+  nonce: string,
+): GoogleProfile {
   if (p.nonce !== nonce) throw new Error('nonce mismatch');
   if (typeof p.sub !== 'string' || typeof p.email !== 'string') throw new Error('missing claims');
   if (p.email_verified !== true) throw new Error('email not verified');

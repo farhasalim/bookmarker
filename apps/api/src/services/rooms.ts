@@ -10,11 +10,12 @@ import { HttpError } from '../http/errors.ts';
  * change what they can see. Renaming is always allowed.
  */
 export async function frozenThrough(tx: Tx, roomId: string): Promise<number> {
-  const [top, chapterCount, posted] = await Promise.all([
-    tx.bookmark.aggregate({ where: { roomId, finished: false }, _max: { position: true } }),
-    tx.chapter.count({ where: { roomId, kind: 'chapter' } }),
-    highestPostedPosition(tx, roomId),
-  ]);
+  const top = await tx.bookmark.aggregate({
+    where: { roomId, finished: false },
+    _max: { position: true },
+  });
+  const chapterCount = await tx.chapter.count({ where: { roomId, kind: 'chapter' } });
+  const posted = await highestPostedPosition(tx, roomId);
   const anyFinished = await tx.bookmark.count({ where: { roomId, finished: true } });
   const reached = Math.max(top._max.position ?? 0, anyFinished > 0 ? chapterCount : 0);
   return Math.min(Math.max(reached, posted), chapterCount);
@@ -30,7 +31,10 @@ export async function buildRoomDTO(tx: Tx, access: RoomAccess): Promise<RoomDTO>
       bookmarks: {
         where: {
           userId: { not: viewer.userId },
-          user: { deletedAt: null, memberships: { some: { clubId: access.clubId, positionHidden: false } } },
+          user: {
+            deletedAt: null,
+            memberships: { some: { clubId: access.clubId, positionHidden: false } },
+          },
         },
         select: { userId: true, position: true, finished: true, user: { select: { name: true } } },
         orderBy: { position: 'desc' },
@@ -39,8 +43,7 @@ export async function buildRoomDTO(tx: Tx, access: RoomAccess): Promise<RoomDTO>
   });
   const { visible, waiting } = await chapterCounts(tx, viewer);
   const chapters: ChapterDTO[] = room.chapters.map((c) => {
-    const unlocked =
-      viewer.finished || (c.kind === 'chapter' && c.position <= viewer.position);
+    const unlocked = viewer.finished || (c.kind === 'chapter' && c.position <= viewer.position);
     return {
       id: c.id,
       position: c.position,
@@ -94,9 +97,13 @@ export async function replaceChapters(
   const afterBook = room.chapters.find((c) => c.kind === 'after_book');
   const existingIds = new Set(existing.map((c) => c.id));
   for (const c of incoming) {
-    if (c.id && !existingIds.has(c.id)) throw new HttpError(400, 'VALIDATION', 'Unknown chapter id');
+    if (c.id && !existingIds.has(c.id))
+      throw new HttpError(400, 'VALIDATION', 'Unknown chapter id');
   }
-  if (new Set(incoming.filter((c) => c.id).map((c) => c.id)).size !== incoming.filter((c) => c.id).length) {
+  if (
+    new Set(incoming.filter((c) => c.id).map((c) => c.id)).size !==
+    incoming.filter((c) => c.id).length
+  ) {
     throw new HttpError(400, 'VALIDATION', 'A chapter appears twice');
   }
 
@@ -132,7 +139,9 @@ export async function replaceChapters(
   if (afterBook) {
     await tx.chapter.update({ where: { id: afterBook.id }, data: { position: afterPos } });
   } else {
-    await tx.chapter.create({ data: { roomId, position: afterPos, title: 'After the book', kind: 'after_book' } });
+    await tx.chapter.create({
+      data: { roomId, position: afterPos, title: 'After the book', kind: 'after_book' },
+    });
   }
   if (confirm && !room.chaptersConfirmedAt) {
     await tx.room.update({ where: { id: roomId }, data: { chaptersConfirmedAt: now } });

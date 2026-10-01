@@ -78,7 +78,8 @@ export async function seed(db: PrismaClient, now = new Date()): Promise<SeedResu
   };
   for (const p of [1, 2, 3]) await write(meera.id, p, `Meera on chapter ${p}`);
   for (const p of [1, 3, 5, 8, 10]) await write(rahul.id, p, `Rahul on chapter ${p}`);
-  for (const p of [2, 4, 6, 8, 10, 12, 15, 20]) await write(anu.id, p, `Anu on chapter ${p} SPOILER-${p}`);
+  for (const p of [2, 4, 6, 8, 10, 12, 15, 20])
+    await write(anu.id, p, `Anu on chapter ${p} SPOILER-${p}`);
   await write(anu.id, SEED_CHAPTERS + 1, 'Anu after the book: the ending SPOILER-END');
 
   const replies: SeedResult['replies'] = [];
@@ -96,11 +97,23 @@ export async function seed(db: PrismaClient, now = new Date()): Promise<SeedResu
     data: [
       { userId: meera.id, roomId: room.id, position: 3, joinedAt: longAgo, movedAt: longAgo },
       { userId: rahul.id, roomId: room.id, position: 10, joinedAt: longAgo, movedAt: longAgo },
-      { userId: anu.id, roomId: room.id, position: SEED_CHAPTERS, finished: true, joinedAt: longAgo, movedAt: longAgo },
+      {
+        userId: anu.id,
+        roomId: room.id,
+        position: SEED_CHAPTERS,
+        finished: true,
+        joinedAt: longAgo,
+        movedAt: longAgo,
+      },
     ],
   });
   await db.review.create({
-    data: { roomId: room.id, userId: anu.id, rating: 4, body: 'Loved it. SPOILER-REVIEW the proposal scene.' },
+    data: {
+      roomId: room.id,
+      userId: anu.id,
+      rating: 4,
+      body: 'Loved it. SPOILER-REVIEW the proposal scene.',
+    },
   });
 
   return {

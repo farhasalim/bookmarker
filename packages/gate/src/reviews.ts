@@ -71,7 +71,13 @@ export async function upsertReview(
   const body = input.body && input.body.length > 0 ? input.body : null;
   const r = await tx.review.upsert({
     where: { roomId_userId: { roomId: viewer.roomId, userId: viewer.userId } },
-    create: { roomId: viewer.roomId, userId: viewer.userId, rating: input.rating, body, isPublic: input.isPublic },
+    create: {
+      roomId: viewer.roomId,
+      userId: viewer.userId,
+      rating: input.rating,
+      body,
+      isPublic: input.isPublic,
+    },
     update: { rating: input.rating, body, isPublic: input.isPublic },
     include: reviewInclude,
   });
@@ -134,7 +140,11 @@ export interface ProfileBook {
  *   puts them behind "May contain spoilers".
  * Only club-mates (or the user themself) may view a profile; the API checks that.
  */
-export async function profileBooks(tx: Tx, profileUserId: string, viewerId: string): Promise<ProfileBook[]> {
+export async function profileBooks(
+  tx: Tx,
+  profileUserId: string,
+  viewerId: string,
+): Promise<ProfileBook[]> {
   const finished = await tx.bookmark.findMany({
     where: { userId: profileUserId, finished: true },
     select: {
@@ -145,18 +155,18 @@ export async function profileBooks(tx: Tx, profileUserId: string, viewerId: stri
   });
   if (finished.length === 0) return [];
   const roomIds = finished.map((f) => f.roomId);
-  const [reviews, viewerFinished, stars] = await Promise.all([
-    tx.review.findMany({ where: { userId: profileUserId, roomId: { in: roomIds } } }),
-    tx.bookmark.findMany({
-      where: { userId: viewerId, roomId: { in: roomIds }, finished: true },
-      select: { roomId: true },
-    }),
-    tx.starEvent.groupBy({
-      by: ['roomId'],
-      where: { userId: profileUserId, roomId: { in: roomIds } },
-      _count: { _all: true },
-    }),
-  ]);
+  const reviews = await tx.review.findMany({
+    where: { userId: profileUserId, roomId: { in: roomIds } },
+  });
+  const viewerFinished = await tx.bookmark.findMany({
+    where: { userId: viewerId, roomId: { in: roomIds }, finished: true },
+    select: { roomId: true },
+  });
+  const stars = await tx.starEvent.groupBy({
+    by: ['roomId'],
+    where: { userId: profileUserId, roomId: { in: roomIds } },
+    _count: { _all: true },
+  });
   const reviewBy = new Map(reviews.map((r) => [r.roomId, r]));
   const viewerDone = new Set(viewerFinished.map((b) => b.roomId));
   const starsBy = new Map(stars.map((s) => [s.roomId, s._count._all]));

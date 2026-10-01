@@ -34,7 +34,11 @@ const app = createApp({
   books: openLibrary(cache),
   google:
     config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET
-      ? googleAuth(config.GOOGLE_CLIENT_ID, config.GOOGLE_CLIENT_SECRET, `${config.API_URL}/api/v1/auth/google/callback`)
+      ? googleAuth(
+          config.GOOGLE_CLIENT_ID,
+          config.GOOGLE_CLIENT_SECRET,
+          `${config.API_URL}/api/v1/auth/google/callback`,
+        )
       : null,
   now: () => new Date(),
 });

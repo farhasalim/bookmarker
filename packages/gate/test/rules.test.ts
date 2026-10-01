@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { canSeePost, canSeeRoomReviews, positionVisible, postablePosition, reach, unlockedRange } from '../src/rules.ts';
+import {
+  canSeePost,
+  canSeeRoomReviews,
+  positionVisible,
+  postablePosition,
+  reach,
+  unlockedRange,
+} from '../src/rules.ts';
 
-const at = (position: number, finished = false) => ({ userId: 'me', roomId: 'r', position, finished });
+const at = (position: number, finished = false) => ({
+  userId: 'me',
+  roomId: 'r',
+  position,
+  finished,
+});
 
 describe('the spoiler rule', () => {
   it('shows chapters at or below the bookmark and hides those above', () => {
@@ -52,7 +64,10 @@ describe('unlock ranges (gate rules 6 and 7)', () => {
     expect(unlockedRange(at(5), at(5))).toBeNull();
   });
   it('finishing unlocks everything above the old bookmark', () => {
-    expect(unlockedRange(at(10), at(20, true))).toEqual({ above: 10, through: Number.POSITIVE_INFINITY });
+    expect(unlockedRange(at(10), at(20, true))).toEqual({
+      above: 10,
+      through: Number.POSITIVE_INFINITY,
+    });
   });
   it('un-finishing unlocks nothing', () => {
     expect(unlockedRange(at(20, true), at(20))).toBeNull();

@@ -17,7 +17,12 @@ import type { Logger } from 'pino';
 import { SESSION_COOKIE, userFromToken } from '../auth/sessions.ts';
 import type { EventBus, RoomEvent } from './bus.ts';
 
-export type IO = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
+export type IO = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  SocketData
+>;
 type S = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 interface SocketData {
   userId: string;
@@ -36,7 +41,13 @@ export function createIO(http: HttpServer, appOrigin: string): IO {
  * using that socket's cached bookmark. Events arrive as ids; content is loaded
  * through @bookmarker/gate for each socket that may see it.
  */
-export function attachRealtime(io: IO, db: Db, bus: EventBus, allowedOrigins: string[], logger: Logger) {
+export function attachRealtime(
+  io: IO,
+  db: Db,
+  bus: EventBus,
+  allowedOrigins: string[],
+  logger: Logger,
+) {
   // Authenticate with the session cookie and check Origin (SEC-8).
   io.use(async (socket, next) => {
     const origin = socket.handshake.headers.origin;
@@ -58,7 +69,10 @@ export function attachRealtime(io: IO, db: Db, bus: EventBus, allowedOrigins: st
         if (!access) return ack?.({ ok: false });
         socket.data.viewers.set(roomId, access.viewer);
         await socket.join(`room:${roomId}`);
-        const room = await db.room.findUniqueOrThrow({ where: { id: roomId }, select: { eventSeq: true } });
+        const room = await db.room.findUniqueOrThrow({
+          where: { id: roomId },
+          select: { eventSeq: true },
+        });
         if (typeof lastSeq === 'number' && lastSeq < room.eventSeq) {
           const missed = await db.roomEvent.findMany({
             where: { roomId, seq: { gt: lastSeq } },
@@ -66,7 +80,12 @@ export function attachRealtime(io: IO, db: Db, bus: EventBus, allowedOrigins: st
             take: REPLAY_MAX,
           });
           for (const row of missed) {
-            const e = { ...(row.payload as object), type: row.type, roomId, seq: row.seq } as RoomEvent;
+            const e = {
+              ...(row.payload as object),
+              type: row.type,
+              roomId,
+              seq: row.seq,
+            } as RoomEvent;
             await deliver(e, [socket], { replay: true });
           }
           socket.emit('room:replay-done', { roomId, seq: room.eventSeq });
@@ -150,14 +169,30 @@ export function attachRealtime(io: IO, db: Db, bus: EventBus, allowedOrigins: st
           const range = unlockedRange(viewer, next);
           if (range) {
             const posts = await postsUnlockedBetween(db, next, range.above, range.through);
-            socket.emit('unlock', { roomId, seq, from: e.from.position, to: e.to.position, finished: e.to.finished, posts });
+            socket.emit('unlock', {
+              roomId,
+              seq,
+              from: e.from.position,
+              to: e.to.position,
+              finished: e.to.finished,
+              posts,
+            });
           } else if (e.to.position < e.from.position || (e.from.finished && !e.to.finished)) {
-            socket.emit('relock', { roomId, seq, position: e.to.position, finished: e.to.finished });
+            socket.emit('relock', {
+              roomId,
+              seq,
+              position: e.to.position,
+              finished: e.to.finished,
+            });
           }
           return;
         }
         const hidden = await db.membership.findFirst({
-          where: { userId: e.userId, positionHidden: true, club: { rooms: { some: { id: roomId } } } },
+          where: {
+            userId: e.userId,
+            positionHidden: true,
+            club: { rooms: { some: { id: roomId } } },
+          },
           select: { userId: true },
         });
         if (!hidden) {
@@ -169,7 +204,8 @@ export function attachRealtime(io: IO, db: Db, bus: EventBus, allowedOrigins: st
             finished: e.to.finished,
           });
         }
-        if (e.to.finished && !e.from.finished) socket.emit('finished', { roomId, seq, userId: e.userId });
+        if (e.to.finished && !e.from.finished)
+          socket.emit('finished', { roomId, seq, userId: e.userId });
         return;
       }
     }
