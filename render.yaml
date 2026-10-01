@@ -1,0 +1,23 @@
+# Render Blueprint for the free staging copy (docs/render.md).
+# One container runs the site, the API and live updates on one address.
+# Render pulls the image GitHub builds; the Deploy workflow tells it when.
+services:
+  - type: web
+    name: bookmarker
+    runtime: image
+    image:
+      url: ghcr.io/farhasalim/bookmarker-render:latest
+    plan: free
+    region: singapore # closest Render region to India; put the Neon database there too
+    healthCheckPath: /livez
+    envVars:
+      - key: DATABASE_URL # Neon's direct connection string (not the "-pooler" one)
+        sync: false
+      - key: SMTP_URL # brevo://YOUR_BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM # e.g. BookMarker <you@gmail.com>, a sender verified in Brevo
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: LOG_LEVEL
+        value: info

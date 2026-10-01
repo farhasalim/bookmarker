@@ -1,0 +1,44 @@
+# One container for Render's free plan: web + API + Caddy, on one origin.
+# (On our own server these run as separate containers; see compose.server.yml.)
+# Build: docker build -f infra/Dockerfile.render -t bookmarker-render .
+# The background jobs run from GitHub Actions instead (.github/workflows/worker-cron.yml).
+
+FROM node:22-bookworm-slim AS base
+RUN corepack enable
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/worker/package.json apps/worker/
+COPY apps/web/package.json apps/web/
+COPY packages/db/package.json packages/db/
+COPY packages/gate/package.json packages/gate/
+COPY packages/mail/package.json packages/mail/
+COPY packages/shared/package.json packages/shared/
+
+# --- the Next.js site, built as a standalone server
+FROM base AS web
+RUN pnpm install --frozen-lockfile --filter "@bookmarker/web..."
+COPY packages/shared packages/shared
+COPY apps/web apps/web
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm --filter @bookmarker/web build
+
+# --- the API (same as Dockerfile.node), plus the site and Caddy
+FROM base AS app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY packages/db/prisma packages/db/prisma
+COPY packages/db/prisma.config.ts packages/db/
+RUN pnpm install --frozen-lockfile --filter "@bookmarker/api..." --filter "@bookmarker/db..."
+COPY packages packages
+COPY apps/api apps/api
+RUN pnpm --filter @bookmarker/db generate
+COPY --from=web /app/apps/web/.next/standalone /web
+COPY --from=web /app/apps/web/.next/static /web/apps/web/.next/static
+COPY --from=caddy:2 /usr/bin/caddy /usr/bin/caddy
+COPY infra/render/Caddyfile /etc/caddy/Caddyfile
+COPY infra/render/start.sh /start.sh
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=10000
+USER node
+EXPOSE 10000
+CMD ["bash", "/start.sh"]

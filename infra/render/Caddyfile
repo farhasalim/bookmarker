@@ -1,0 +1,41 @@
+# Inside the Render container. Render terminates HTTPS and forwards plain HTTP
+# to $PORT; Caddy sends API and socket traffic to the API and the rest to Next,
+# so the site, API and live updates share one origin (first-party cookies).
+{
+	auto_https off
+	admin off
+	servers {
+		# Render's proxy (a private address) sets True-Client-IP to the visitor's
+		# address. Believe it only from private addresses, and only that header.
+		trusted_proxies static private_ranges
+		client_ip_headers True-Client-IP
+	}
+}
+
+:{$PORT} {
+	encode zstd gzip
+
+	@api path /api/* /socket.io/* /healthz
+	handle @api {
+		reverse_proxy 127.0.0.1:4000 {
+			# One clean hop for the API (TRUST_PROXY=1): the visitor's IP, which
+			# sign-in rate limits key on. Anything the browser sent is replaced.
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+	# Render's health check: answers without touching the database, so the free
+	# database can still go to sleep between visits.
+	handle /livez {
+		respond "ok" 200
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	header -Server
+	log {
+		output stdout
+		format json
+		level WARN
+	}
+}

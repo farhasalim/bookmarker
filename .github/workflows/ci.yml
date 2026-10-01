@@ -22,7 +22,8 @@ jobs:
     services:
       postgres:
         image: postgres:16-alpine
-        env: { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_test }
+        env:
+          { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_test }
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
     steps:
@@ -46,7 +47,8 @@ jobs:
     services:
       postgres:
         image: postgres:16-alpine
-        env: { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_test }
+        env:
+          { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_test }
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
     steps:
@@ -64,7 +66,12 @@ jobs:
     services:
       postgres:
         image: postgres:16-alpine
-        env: { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_e2e_test }
+        env:
+          {
+            POSTGRES_USER: bookmarker,
+            POSTGRES_PASSWORD: bookmarker,
+            POSTGRES_DB: bookmarker_e2e_test,
+          }
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
     env:
@@ -99,20 +106,7 @@ jobs:
         with:
           scan-args: --lockfile=pnpm-lock.yaml
 
-  images:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Build node image
-        uses: docker/build-push-action@v6
-        with: { context: ., file: infra/Dockerfile.node, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
-      - name: Build web image
-        uses: docker/build-push-action@v6
-        with: { context: ., file: infra/Dockerfile.web, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
-
-  # Builds both images (amd64 only, not pushed) so a broken Dockerfile fails the
+  # Builds every image (amd64 only, not pushed) so a broken Dockerfile fails the
   # pull request instead of the deploy.
   docker-build:
     runs-on: ubuntu-latest
@@ -121,7 +115,31 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Node image (api, worker, migrate)
         uses: docker/build-push-action@v6
-        with: { context: ., file: infra/Dockerfile.node, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
+        with:
+          {
+            context: .,
+            file: infra/Dockerfile.node,
+            push: false,
+            cache-from: type=gha,
+            cache-to: 'type=gha,mode=max',
+          }
       - name: Web image
         uses: docker/build-push-action@v6
-        with: { context: ., file: infra/Dockerfile.web, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
+        with:
+          {
+            context: .,
+            file: infra/Dockerfile.web,
+            push: false,
+            cache-from: type=gha,
+            cache-to: 'type=gha,mode=max',
+          }
+      - name: Render image (web + API in one container)
+        uses: docker/build-push-action@v6
+        with:
+          {
+            context: .,
+            file: infra/Dockerfile.render,
+            push: false,
+            cache-from: type=gha,
+            cache-to: 'type=gha,mode=max',
+          }
