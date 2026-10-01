@@ -1,0 +1,120 @@
+# Staging / production on one server (Oracle Always Free ARM VM, or any VPS).
+#   cd /opt/bookmarker && docker compose -f compose.server.yml --env-file .env up -d
+# Images come from GitHub Container Registry, built by .github/workflows/deploy.yml.
+# See docs/runbook.md for deploy, roll back, restore and secret rotation.
+x-app-env: &app-env
+  NODE_ENV: production
+  APP_URL: https://${DOMAIN}
+  API_URL: https://${DOMAIN}
+  DATABASE_URL: postgresql://bookmarker:${POSTGRES_PASSWORD}@postgres:5432/bookmarker
+  REDIS_URL: redis://redis:6379
+  SESSION_SECRET: ${SESSION_SECRET}
+  COOKIE_SECURE: 'true'
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  SMTP_URL: ${SMTP_URL}
+  EMAIL_FROM: ${EMAIL_FROM}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  LOG_LEVEL: info
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ['80:80', '443:443']
+    environment:
+      DOMAIN: ${DOMAIN}
+      MAILPIT_USER: ${MAILPIT_USER:-staff}
+      MAILPIT_HASH: ${MAILPIT_HASH:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [web, api]
+
+  web:
+    image: ghcr.io/${GHCR_OWNER}/bookmarker-web:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:4000
+
+  api:
+    image: ghcr.io/${GHCR_OWNER}/bookmarker-node:${TAG:-latest}
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+
+  worker:
+    image: ghcr.io/${GHCR_OWNER}/bookmarker-node:${TAG:-latest}
+    restart: unless-stopped
+    command: ['pnpm', '--filter', '@bookmarker/worker', 'start']
+    environment: *app-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # One-shot: applies pending migrations before api/worker start.
+  migrate:
+    image: ghcr.io/${GHCR_OWNER}/bookmarker-node:${TAG:-latest}
+    command: ['pnpm', '--filter', '@bookmarker/db', 'migrate:deploy']
+    environment: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bookmarker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: bookmarker
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bookmarker']
+      interval: 5s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes: [redisdata:/data]
+
+  # Nightly pg_dump to any S3-compatible bucket (Cloudflare R2 free tier by default).
+  backup:
+    # Same major version as the server, so pg_dump/pg_restore always match.
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '/backup/backup-loop.sh']
+    environment:
+      PGHOST: postgres
+      PGUSER: bookmarker
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: bookmarker
+      S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_KEY:-}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET:-}
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-21}
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+    volumes:
+      - ./backup:/backup:ro
+      - backups:/backups
+    depends_on: [postgres]
+
+  # Staging only: catches all email; UI at https://DOMAIN/mail (basic auth).
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    environment:
+      MP_WEBROOT: /mail
+    profiles: ['staging']
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  backups:

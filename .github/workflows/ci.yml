@@ -1,0 +1,113 @@
+# Runs on every pull request and every push to main.
+# Make these REQUIRED checks in GitHub → Settings → Branches → main:
+#   "checks", "leak-test (AT-1)", "e2e", "security"
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://bookmarker:bookmarker@localhost:5432/bookmarker_test
+  TEST_DATABASE_URL: postgresql://bookmarker:bookmarker@localhost:5432/bookmarker_test
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_test }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations
+        run: pnpm --filter @bookmarker/db migrate:deploy
+      - name: Migrations match schema.prisma (drift check)
+        run: pnpm --filter @bookmarker/db drift
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Unit, gate, API and worker tests
+        run: pnpm test
+
+  leak-test:
+    name: leak-test (AT-1)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_test }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @bookmarker/db migrate:deploy
+      - name: Spoiler leak sweep — HTTP, sockets, email (blocks merge)
+        run: pnpm test:leak
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: bookmarker, POSTGRES_PASSWORD: bookmarker, POSTGRES_DB: bookmarker_e2e_test }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://bookmarker:bookmarker@localhost:5432/bookmarker_e2e_test
+      E2E_DATABASE_URL: postgresql://bookmarker:bookmarker@localhost:5432/bookmarker_e2e_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @bookmarker/db migrate:deploy
+      - run: pnpm --filter @bookmarker/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @bookmarker/web e2e:build
+      - name: Reading loop + accessibility (AT-15)
+        run: pnpm --filter @bookmarker/web test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: apps/web/playwright-report, retention-days: 7 }
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - name: Known vulnerabilities in dependencies (high and above fail)
+        run: pnpm audit --audit-level=high
+      - name: OSV scanner (Google's open vulnerability database)
+        uses: google/osv-scanner-action/osv-scanner-action@v2.2.3
+        with:
+          scan-args: --lockfile=pnpm-lock.yaml
+
+  images:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build node image
+        uses: docker/build-push-action@v6
+        with: { context: ., file: infra/Dockerfile.node, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with: { context: ., file: infra/Dockerfile.web, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }

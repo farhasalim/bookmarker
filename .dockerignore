@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+**/coverage
+**/test-results
+**/playwright-report
+.git
+.env
+**/.env
+packages/db/src/generated

@@ -1,0 +1,24 @@
+# Local development services. Run the apps on your machine with `pnpm dev`.
+#   docker compose up -d       → Postgres :5432, Redis :6379, Mailpit UI :8025 (SMTP :1025)
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bookmarker
+      POSTGRES_PASSWORD: bookmarker
+      POSTGRES_DB: bookmarker
+    ports: ['5432:5432']
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bookmarker']
+      interval: 5s
+  redis:
+    image: redis:7-alpine
+    ports: ['6379:6379']
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ['8025:8025', '1025:1025']
+volumes:
+  pgdata:

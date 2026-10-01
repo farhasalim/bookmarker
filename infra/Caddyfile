@@ -1,0 +1,34 @@
+# One origin for everything, so session cookies stay first-party.
+# Caddy fetches and renews HTTPS certificates automatically.
+{$DOMAIN} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+	handle /socket.io/* {
+		reverse_proxy api:4000
+	}
+	handle /healthz {
+		reverse_proxy api:4000
+	}
+	# Staging inbox (only when the mailpit profile is running).
+	handle /mail* {
+		basic_auth {
+			{$MAILPIT_USER} {$MAILPIT_HASH}
+		}
+		reverse_proxy mailpit:8025
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+	}
+}

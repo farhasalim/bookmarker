@@ -1,4 +1,8 @@
 import type { NextConfig } from 'next';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 /**
  * In production Caddy sends /api/* and /socket.io/* to the API on the same origin,
@@ -29,6 +33,8 @@ const securityHeaders = [
 
 const config: NextConfig = {
   output: 'standalone',
+  // Monorepo: trace workspace packages from the repo root into the standalone build.
+  outputFileTracingRoot: repoRoot,
   transpilePackages: ['@bookmarker/shared'],
   poweredByHeader: false,
   async rewrites() {

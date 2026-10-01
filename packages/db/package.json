@@ -16,7 +16,8 @@
     "migrate:deploy": "prisma migrate deploy",
     "seed": "tsx src/seed-cli.ts",
     "typecheck": "tsc --noEmit",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

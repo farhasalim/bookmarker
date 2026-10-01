@@ -1,0 +1,93 @@
+# Builds ARM64 + AMD64 images, pushes to GitHub Container Registry, then deploys.
+#   push to main          → staging
+#   manual "Run workflow" → production (choose the tag to deploy, or roll back to an older one)
+# Needs two GitHub Environments, "staging" and "production", each with secrets
+# SSH_HOST, SSH_USER, SSH_KEY. Give "production" a required reviewer so deploys
+# wait for your click. See docs/runbook.md.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'staging or production'
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+      tag:
+        description: 'Image tag (git SHA) to deploy. Empty = this commit. Use an older SHA to roll back.'
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    if: github.event_name == 'push' || inputs.tag == ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}' }
+      - name: Node image (api, worker, migrate)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.node
+          platforms: linux/arm64,linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/bookmarker-node:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.web
+          platforms: linux/arm64,linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/bookmarker-web:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: [build]
+    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy server files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: 'infra/compose.server.yml,infra/Caddyfile,infra/backup'
+          target: /opt/bookmarker
+          strip_components: 1
+      - name: Pull and restart (migrations run first, then api/worker)
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          TAG: ${{ inputs.tag || github.sha }}
+          PROFILE: ${{ (inputs.environment || 'staging') == 'staging' && '--profile staging' || '' }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: TAG,PROFILE
+          script: |
+            set -e
+            cd /opt/bookmarker
+            echo "TAG=$TAG" > .tag && cat .env .tag > .env.run
+            docker compose -f compose.server.yml --env-file .env.run $PROFILE pull
+            docker compose -f compose.server.yml --env-file .env.run $PROFILE up -d --remove-orphans
+            sleep 10
+            curl -fsS "https://$(grep ^DOMAIN= .env | cut -d= -f2)/healthz"
+            echo "$TAG" >> deploy-history.log
