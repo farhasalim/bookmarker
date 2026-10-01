@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FriendPosition, PostDTO } from '@bookmarker/shared';
 import { LIMITS } from '@bookmarker/shared';
 import { api } from '@/lib/api';
@@ -29,6 +29,13 @@ export function PostBar({
   showAudience?: boolean;
 }) {
   const [body, setBody] = useState('');
+  const box = useRef<HTMLTextAreaElement>(null);
+  // Text typed before the page finished loading its script is in the box but
+  // not in state yet; pick it up so the Post button isn't left disabled.
+  useEffect(() => {
+    const typed = box.current?.value;
+    if (typed) setBody(typed);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const where = afterBook ? 'after the book' : `at chapter ${position}`;
@@ -68,6 +75,7 @@ export function PostBar({
       </label>
       <textarea
         id="post-body"
+        ref={box}
         rows={rows}
         maxLength={LIMITS.postBody}
         required

@@ -41,3 +41,14 @@ export async function api<T>(
 }
 
 export const fetcher = <T>(path: string) => api<T>(path);
+
+/**
+ * Should a page drop what it is showing? Yes when it never loaded, or when the
+ * server says it's gone or no longer ours (401/403/404). A blip (network, 5xx)
+ * during a background refresh keeps the page — and any half-typed post — in place.
+ */
+export function showLoadError(error: unknown, data: unknown): boolean {
+  if (!error) return false;
+  if (data === undefined) return true;
+  return error instanceof ApiError && [401, 403, 404].includes(error.status);
+}

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { use, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ChapterDTO, PostDTO, UnlockResult } from '@bookmarker/shared';
-import { api } from '@/lib/api';
+import { api, showLoadError } from '@/lib/api';
 import { listNames, plural } from '@/lib/format';
 import { useMe, useRoom } from '@/lib/hooks';
 import { useRoomSocket } from '@/lib/socket';
@@ -46,7 +46,7 @@ export default function ReadingRoom({ params }: { params: Promise<{ roomId: stri
   const chapters = useMemo(() => r?.chapters.filter((c) => c.kind === 'chapter') ?? [], [r]);
   const afterBook = r?.chapters.find((c) => c.kind === 'after_book');
 
-  if (room.error)
+  if (showLoadError(room.error, room.data))
     return (
       <Screen>
         <TopBar back="/home" />

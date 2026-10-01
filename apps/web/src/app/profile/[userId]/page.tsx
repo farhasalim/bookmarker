@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { use, useState } from 'react';
 import useSWR from 'swr';
-import { fetcher } from '@/lib/api';
+import { fetcher, showLoadError } from '@/lib/api';
 import { useMe, useNotifications } from '@/lib/hooks';
 import type { Profile, ProfileBook } from '@/lib/types';
 import { GearIcon, StarIcon } from '@/components/icons';
@@ -24,7 +24,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const { data: letters } = useNotifications();
   const profile = useSWR<Profile>(`/users/${userId}/profile`, fetcher);
   const [tab, setTab] = useState<'shelf' | 'reviews'>('shelf');
-  if (profile.error)
+  if (showLoadError(profile.error, profile.data))
     return (
       <Screen>
         <TopBar back="/home" />

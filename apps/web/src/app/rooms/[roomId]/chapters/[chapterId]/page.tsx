@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { use, useCallback, useState } from 'react';
 import useSWR from 'swr';
 import type { PostDTO, UnlockResult } from '@bookmarker/shared';
-import { api, fetcher } from '@/lib/api';
+import { api, fetcher, showLoadError } from '@/lib/api';
 import { plural } from '@/lib/format';
 import { useMe, useRoom } from '@/lib/hooks';
 import { useRoomSocket } from '@/lib/socket';
@@ -52,7 +52,7 @@ export default function ChapterView({
   );
 
   const r = room.data;
-  if (room.error)
+  if (showLoadError(room.error, room.data))
     return (
       <Screen>
         <TopBar back="/home" />

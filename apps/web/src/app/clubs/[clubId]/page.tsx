@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { use, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
-import { api, fetcher } from '@/lib/api';
+import { api, fetcher, showLoadError } from '@/lib/api';
 import { useMe } from '@/lib/hooks';
 import type { ClubDetail, ReportItem } from '@/lib/types';
 import { Avatar, Button, ErrorText, Loading, Screen, TopBar } from '@/components/ui';
@@ -33,7 +33,7 @@ export default function Club({ params }: { params: Promise<{ clubId: string }> }
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  if (club.error)
+  if (showLoadError(club.error, club.data))
     return (
       <Screen>
         <TopBar back="/clubs" />
