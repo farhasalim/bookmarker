@@ -1,4 +1,12 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+
+config({
+  path: [
+    new URL('../.env', import.meta.url).pathname,
+    new URL('../../../.env', import.meta.url).pathname,
+  ],
+  quiet: true,
+});
 import { createDb } from './index.ts';
 import { seed } from './seed.ts';
 
