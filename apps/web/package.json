@@ -8,7 +8,6 @@
     "build": "next build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
     "test:e2e": "playwright test",
     "e2e:build": "NEXT_PUBLIC_SOCKET_URL=http://localhost:4000 next build"
   },
