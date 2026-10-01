@@ -2,7 +2,7 @@ import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { pino } from 'pino';
 import { createDb } from '@bookmarker/db';
-import { smtpMailer } from '@bookmarker/mail';
+import { mailerFromUrl } from '@bookmarker/mail';
 import type { JobContext } from './context.ts';
 import { deliverDue, emailDelivered } from './jobs/deliver.ts';
 import { runReminders } from './jobs/reminders.ts';
@@ -23,7 +23,7 @@ const db = createDb();
 const ctx: JobContext = {
   db,
   logger,
-  mailer: smtpMailer(
+  mailer: mailerFromUrl(
     process.env.SMTP_URL ?? 'smtp://localhost:1025',
     process.env.EMAIL_FROM ?? 'BookMarker <hello@bookmarker.local>',
   ),

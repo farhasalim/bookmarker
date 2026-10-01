@@ -92,6 +92,11 @@ export async function waitingCountAt(tx: Tx, viewer: Viewer, chapterId: string):
   return tx.post.count({ where: { AND: [waitingPostsWhere(viewer), { chapterId }] } });
 }
 
+/** How many (undeleted) posts the viewer wrote in this room. */
+export async function countOwnPosts(tx: Tx, viewer: Viewer): Promise<number> {
+  return tx.post.count({ where: { roomId: viewer.roomId, authorId: viewer.userId, deletedAt: null } });
+}
+
 /** Highest chapter position that has any post (for the chapter-lock rule). */
 export async function highestPostedPosition(tx: Tx, roomId: string): Promise<number> {
   const top = await tx.post.findFirst({

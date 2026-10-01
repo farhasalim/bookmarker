@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { Redis } from 'ioredis';
 import { pino } from 'pino';
 import { createDb } from '@bookmarker/db';
-import { smtpMailer } from '@bookmarker/mail';
+import { mailerFromUrl } from '@bookmarker/mail';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { googleAuth } from './auth/google.ts';
@@ -28,7 +28,7 @@ const app = createApp({
   config,
   db,
   logger,
-  mailer: smtpMailer(config.SMTP_URL, config.EMAIL_FROM),
+  mailer: mailerFromUrl(config.SMTP_URL, config.EMAIL_FROM),
   limiter: redis ? redisRateLimiter(redis) : memoryRateLimiter(),
   bus,
   books: openLibrary(cache),

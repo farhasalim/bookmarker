@@ -1,5 +1,10 @@
 import type { Tx } from '@bookmarker/db';
-import { chapterCounts, highestPostedPosition, type RoomAccess } from '@bookmarker/gate';
+import {
+  chapterCounts,
+  countOwnPosts,
+  highestPostedPosition,
+  type RoomAccess,
+} from '@bookmarker/gate';
 import type { ChapterDTO, FriendPosition, RoomDTO } from '@bookmarker/shared';
 import { HttpError } from '../http/errors.ts';
 
@@ -42,6 +47,11 @@ export async function buildRoomDTO(tx: Tx, access: RoomAccess): Promise<RoomDTO>
     },
   });
   const { visible, waiting } = await chapterCounts(tx, viewer);
+  const mine = await tx.bookmark.findUnique({
+    where: { userId_roomId: { userId: viewer.userId, roomId: viewer.roomId } },
+    select: { joinedAt: true },
+  });
+  const postCount = await countOwnPosts(tx, viewer);
   const chapters: ChapterDTO[] = room.chapters.map((c) => {
     const unlocked = viewer.finished || (c.kind === 'chapter' && c.position <= viewer.position);
     return {
@@ -70,7 +80,13 @@ export async function buildRoomDTO(tx: Tx, access: RoomAccess): Promise<RoomDTO>
     status: room.status,
     chaptersConfirmed: room.chaptersConfirmedAt !== null,
     chapterCount: room.chapters.filter((c) => c.kind === 'chapter').length,
-    me: { position: viewer.position, finished: viewer.finished, isHost: access.isHost },
+    me: {
+      position: viewer.position,
+      finished: viewer.finished,
+      isHost: access.isHost,
+      joinedAt: (mine?.joinedAt ?? room.openedAt).toISOString(),
+      postCount,
+    },
     chapters,
     friends,
     frozenThrough: room.chaptersConfirmedAt ? await frozenThrough(tx, room.id) : 0,

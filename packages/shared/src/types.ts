@@ -60,7 +60,13 @@ export interface RoomDTO {
   status: 'current' | 'done';
   chaptersConfirmed: boolean;
   chapterCount: number;
-  me: { position: number; finished: boolean; isHost: boolean };
+  me: {
+    position: number;
+    finished: boolean;
+    isHost: boolean;
+    joinedAt: string;
+    postCount: number;
+  };
   chapters: ChapterDTO[];
   /** Friends' positions. Readers who hide their position are left out (FR-20). */
   friends: FriendPosition[];

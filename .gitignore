@@ -12,3 +12,7 @@ test-results/
 packages/db/src/generated/
 .DS_Store
 infra/secrets/*.dec.*
+apps/web/test-results/
+apps/web/.next/
+*.tsbuildinfo
+next-env.d.ts

@@ -8,7 +8,8 @@
     "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:leak": "vitest run test/leak.test.ts"
+    "test:leak": "vitest run test/leak.test.ts",
+    "once": "tsx --env-file-if-exists=../../.env src/run-once.ts"
   },
   "dependencies": {
     "@bookmarker/db": "workspace:*",
