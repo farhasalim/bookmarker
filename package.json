@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --workspace-concurrency=1 test",
-    "test:leak": "pnpm --filter @bookmarker/api test:leak",
+    "test:leak": "pnpm --filter @bookmarker/api --filter @bookmarker/worker --workspace-concurrency=1 test:leak",
     "test:e2e": "pnpm --filter @bookmarker/web test:e2e",
     "db:migrate": "pnpm --filter @bookmarker/db migrate:dev",
     "db:deploy": "pnpm --filter @bookmarker/db migrate:deploy",

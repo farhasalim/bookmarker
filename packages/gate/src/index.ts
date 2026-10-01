@@ -11,3 +11,4 @@ export * from './recipients.ts';
 export * from './reviews.ts';
 export { toUserSummary } from './dto.ts';
 export * from './admin.ts';
+export * from './notify-checks.ts';

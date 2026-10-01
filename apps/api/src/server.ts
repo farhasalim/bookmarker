@@ -47,6 +47,20 @@ const server = createServer(app);
 const io = createIO(server, config.appOrigin);
 const realtime = attachRealtime(io, db, bus, [config.appOrigin, config.apiOrigin], logger);
 
+// The worker publishes { userId, id } when it delivers an in-app notification.
+if (redis) {
+  const sub = redis.duplicate();
+  await sub.subscribe('bookmarker:notify');
+  sub.on('message', (_ch, msg) => {
+    try {
+      const { userId, id } = JSON.parse(msg) as { userId: string; id: string };
+      realtime.notifyUser(userId, id);
+    } catch {
+      /* ignore malformed */
+    }
+  });
+}
+
 server.listen(config.PORT, () => logger.info({ port: config.PORT }, 'api listening'));
 
 // Zero-downtime-friendly shutdown: stop accepting, finish in-flight, then exit.
