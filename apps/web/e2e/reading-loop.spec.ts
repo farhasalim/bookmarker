@@ -43,7 +43,12 @@ test('move bookmark → posts unlock → post → friend is notified', async ({ 
   await rahul.getByRole('button', { name: 'Move bookmark', exact: true }).click();
   await expect(rahul.getByText('you’re on chapter 3')).toBeVisible();
   const rahulPost = rahul.getByRole('button', { name: 'Post', exact: true });
-  await fillStable(rahul, 'Your thought at chapter 3', 'Mr Collins proposes. I laughed out loud.', rahulPost);
+  await fillStable(
+    rahul,
+    'Your thought at chapter 3',
+    'Mr Collins proposes. I laughed out loud.',
+    rahulPost,
+  );
   await rahulPost.click();
   await expect(rahul.getByText('Posted.')).toBeVisible();
 

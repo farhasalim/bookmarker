@@ -13,12 +13,7 @@ const MAGIC_TTL_MS = 15 * 60 * 1000;
 
 export function authRoutes(d: Deps): Router {
   const r = Router();
-  const byIp = limit(
-    d.limiter,
-    'auth',
-    (req) => req.ip ?? 'unknown',
-    d.config.RATE_LIMIT_AUTH,
-  );
+  const byIp = limit(d.limiter, 'auth', (req) => req.ip ?? 'unknown', d.config.RATE_LIMIT_AUTH);
   const secure = d.config.COOKIE_SECURE;
 
   /* ---------------- magic link (FR-1: valid 15 minutes, single use) ---------------- */
