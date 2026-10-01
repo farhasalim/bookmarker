@@ -24,6 +24,8 @@ const apiEnv = {
   SESSION_SECRET: 'e2e-secret-e2e-secret-e2e-secret',
   SMTP_URL: `file://${MAIL_DIR}`,
   LOG_LEVEL: 'warn',
+  // Every test signs several people in from 127.0.0.1; the real limit is 10 per 15 min.
+  RATE_LIMIT_AUTH: '1000',
 };
 
 export default defineConfig({

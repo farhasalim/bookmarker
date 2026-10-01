@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { fillStable, runWorker, signIn } from './helpers';
+import { resetE2E } from './reset';
+
+// Each test (and each CI retry) starts from an empty database and mailbox.
+test.beforeEach(() => resetE2E());
 
 /**
  * The reading loop, end to end through the real UI:
@@ -38,8 +42,9 @@ test('move bookmark → posts unlock → post → friend is notified', async ({ 
   await rahul.getByRole('button', { name: /Chapter 3, not read yet/ }).click();
   await rahul.getByRole('button', { name: 'Move bookmark', exact: true }).click();
   await expect(rahul.getByText('you’re on chapter 3')).toBeVisible();
-  await fillStable(rahul, 'Your thought at chapter 3', 'Mr Collins proposes. I laughed out loud.');
-  await rahul.getByRole('button', { name: 'Post', exact: true }).click();
+  const rahulPost = rahul.getByRole('button', { name: 'Post', exact: true });
+  await fillStable(rahul, 'Your thought at chapter 3', 'Mr Collins proposes. I laughed out loud.', rahulPost);
+  await rahulPost.click();
   await expect(rahul.getByText('Posted.')).toBeVisible();
 
   // 4. Anu, at chapter 0, sees a count and never the text.
@@ -61,8 +66,9 @@ test('move bookmark → posts unlock → post → friend is notified', async ({ 
   await rahul.getByRole('link', { name: /Chapter 3, read/ }).click();
   await expect(rahul.getByText('Mr Collins proposes. I laughed out loud.')).toBeVisible();
   await anu.getByRole('link', { name: /Read all 1 and add yours/ }).click();
-  await fillStable(anu, 'Your thought at chapter 3', 'And Charlotte’s choice next. Oof.');
-  await anu.getByRole('button', { name: 'Post at chapter 3' }).click();
+  const anuPost = anu.getByRole('button', { name: 'Post at chapter 3' });
+  await fillStable(anu, 'Your thought at chapter 3', 'And Charlotte’s choice next. Oof.', anuPost);
+  await anuPost.click();
   await expect(rahul.getByText('And Charlotte’s choice next. Oof.')).toBeVisible({ timeout: 5000 });
 
   // 7. The 30-minute batch runs: Rahul is notified in Letters (names and numbers only).
@@ -102,8 +108,9 @@ test('a reader behind is never shown, or notified about, a post ahead of them', 
   await host.goto(roomUrl);
   await host.getByRole('button', { name: /Chapter 4, not read yet/ }).click();
   await host.getByRole('button', { name: 'Move bookmark', exact: true }).click();
-  await fillStable(host, 'Your thought at chapter 4', 'THE ENDING TWIST');
-  await host.getByRole('button', { name: 'Post', exact: true }).click();
+  const hostPost = host.getByRole('button', { name: 'Post', exact: true });
+  await fillStable(host, 'Your thought at chapter 4', 'THE ENDING TWIST', hostPost);
+  await hostPost.click();
 
   await expect(
     slow.getByRole('button', { name: /Chapter 4, not read yet, 1 waiting/ }),

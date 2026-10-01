@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { expect, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { E2E_DB, MAIL_DIR } from '../playwright.config';
 
 /** Newest email to `to`, read from the file mailer. */
@@ -70,10 +70,15 @@ export function runWorker(
   );
 }
 
-/** Type into a field and wait until it sticks (guards against hydration/re-render races). */
-export async function fillStable(page: Page, label: string, value: string) {
+/**
+ * Type into a field and wait until it sticks (guards against hydration/re-render
+ * races). With `submit`, also wait until that button is enabled, i.e. the app
+ * has taken the text, retyping if the box was replaced in between.
+ */
+export async function fillStable(page: Page, label: string, value: string, submit?: Locator) {
   await expect(async () => {
     await page.getByLabel(label).fill(value);
     await expect(page.getByLabel(label)).toHaveValue(value, { timeout: 500 });
-  }).toPass({ timeout: 10_000 });
+    if (submit) await expect(submit).toBeEnabled({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
 }

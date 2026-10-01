@@ -17,6 +17,8 @@ const Env = z.object({
   SMTP_URL: z.string().default('smtp://localhost:1025'),
   EMAIL_FROM: z.string().default('BookMarker <hello@bookmarker.local>'),
   LOG_LEVEL: z.string().default('info'),
+  /** Sign-in requests per IP per 15 minutes (SEC-6 says 10). Raised only for e2e tests. */
+  RATE_LIMIT_AUTH: z.coerce.number().int().min(1).default(10),
 });
 
 export type Config = z.infer<typeof Env> & { appOrigin: string; apiOrigin: string };

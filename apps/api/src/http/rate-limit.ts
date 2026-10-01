@@ -50,8 +50,11 @@ export function limit(
   limiter: RateLimiter,
   name: keyof typeof LIMITS,
   keyOf: (req: Parameters<RequestHandler>[0]) => string,
+  /** Override the SRS number (from config); the window stays the same. */
+  maxOverride?: number,
 ): RequestHandler {
-  const { limit: max, window } = LIMITS[name];
+  const { window } = LIMITS[name];
+  const max = maxOverride ?? LIMITS[name].limit;
   return async (req, _res, next) => {
     const ok = await limiter.hit(`${name}:${keyOf(req)}`, max, window);
     if (!ok)
