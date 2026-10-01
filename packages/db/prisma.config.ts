@@ -8,10 +8,12 @@ config({
   ],
   quiet: true,
 });
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: { path: 'prisma/migrations' },
-  datasource: { url: env('DATABASE_URL') },
+  // `prisma generate` (run at install, including inside Docker builds) needs no
+  // database, so DATABASE_URL is optional here; migrate commands still need it.
+  ...(process.env.DATABASE_URL ? { datasource: { url: process.env.DATABASE_URL } } : {}),
 });

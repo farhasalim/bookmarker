@@ -111,3 +111,17 @@ jobs:
       - name: Build web image
         uses: docker/build-push-action@v6
         with: { context: ., file: infra/Dockerfile.web, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
+
+  # Builds both images (amd64 only, not pushed) so a broken Dockerfile fails the
+  # pull request instead of the deploy.
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Node image (api, worker, migrate)
+        uses: docker/build-push-action@v6
+        with: { context: ., file: infra/Dockerfile.node, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
+      - name: Web image
+        uses: docker/build-push-action@v6
+        with: { context: ., file: infra/Dockerfile.web, push: false, cache-from: type=gha, cache-to: 'type=gha,mode=max' }
