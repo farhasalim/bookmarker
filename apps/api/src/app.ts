@@ -18,7 +18,7 @@ import { roomRoutes } from './routes/rooms.ts';
 export function createApp(d: Deps): express.Express {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 1); // behind Caddy
+  app.set('trust proxy', d.config.TRUST_PROXY); // 1 = behind Caddy
 
   app.use(
     pinoHttp({

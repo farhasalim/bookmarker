@@ -19,6 +19,16 @@ const Env = z.object({
   LOG_LEVEL: z.string().default('info'),
   /** Sign-in requests per IP per 15 minutes (SEC-6 says 10). Raised only for e2e tests. */
   RATE_LIMIT_AUTH: z.coerce.number().int().min(1).default(10),
+  /**
+   * Express "trust proxy": how to find the visitor's IP behind proxies (used by
+   * rate limits). 1 = one proxy (Caddy on our own server). See docs/render.md.
+   */
+  TRUST_PROXY: z
+    .string()
+    .default('1')
+    .transform((v): boolean | number | string =>
+      v === 'true' ? true : /^\d+$/.test(v) ? Number(v) : v,
+    ),
 });
 
 export type Config = z.infer<typeof Env> & { appOrigin: string; apiOrigin: string };
