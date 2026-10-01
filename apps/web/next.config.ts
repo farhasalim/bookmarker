@@ -2,7 +2,11 @@ import type { NextConfig } from 'next';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { config as loadEnv } from 'dotenv';
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
+// One .env at the repo root for every app (no-op in Docker, where there is none).
+loadEnv({ path: join(repoRoot, '.env'), quiet: true });
 
 /**
  * In production Caddy sends /api/* and /socket.io/* to the API on the same origin,
