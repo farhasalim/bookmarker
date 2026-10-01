@@ -9,7 +9,8 @@ wrote it)**. That one rule is enforced in one place on the server: `packages/gat
   [Screen designs](https://claude.ai/artifact/ADUyLgpdydoxhxqQKLfi2a)
 - Where we differ from the SRS, and why: [docs/srs-addendum.md](docs/srs-addendum.md)
 - How it fits together: [docs/architecture.md](docs/architecture.md)
-- Deploy, roll back, restore, rotate secrets: [docs/runbook.md](docs/runbook.md)
+- Free staging on Render + Neon (sleeps when idle): [docs/render.md](docs/render.md)
+- Our own server (always on): deploy, roll back, restore, rotate secrets: [docs/runbook.md](docs/runbook.md)
 - Choices that could lock us in, and the way out: [docs/decisions.md](docs/decisions.md)
 
 ## Layout

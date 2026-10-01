@@ -14,6 +14,12 @@
 One origin means the session cookie is first-party everywhere and CSRF protection stays simple.
 Everything runs as containers from `infra/compose.server.yml` on one server.
 
+The free staging copy on Render keeps the same shape inside one container
+(`infra/Dockerfile.render`: Caddy, API and site on one origin) with Neon as Postgres, no Redis
+(in-memory bus and rate limits; there is only one API process) and the worker's jobs run every
+15 minutes from GitHub Actions (`pnpm --filter @bookmarker/worker once all`). See
+[render.md](render.md).
+
 ## The spoiler gate
 
 The rule: a post is visible to a reader, and may notify them, only if its chapter position is at or
@@ -21,12 +27,12 @@ below the reader's bookmark, or the reader wrote it. Finished = infinity.
 
 Where it lives: `packages/gate`.
 
-| File | What it holds |
-|---|---|
-| `rules.ts` | The rule as pure functions (`canSeePost`, `reach`, `postablePosition`, `unlockedRange`). |
-| `where.ts` | The rule as the one Prisma filter (`visiblePostsWhere`) that every query composes. |
-| `posts.ts`, `reviews.ts`, `admin.ts` | Every read and write of posts, replies, likes, reviews and reports. |
-| `recipients.ts`, `notify-checks.ts` | Who may hear about a post **right now** (used at send time). |
+| File                                 | What it holds                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `rules.ts`                           | The rule as pure functions (`canSeePost`, `reach`, `postablePosition`, `unlockedRange`). |
+| `where.ts`                           | The rule as the one Prisma filter (`visiblePostsWhere`) that every query composes.       |
+| `posts.ts`, `reviews.ts`, `admin.ts` | Every read and write of posts, replies, likes, reviews and reports.                      |
+| `recipients.ts`, `notify-checks.ts`  | Who may hear about a post **right now** (used at send time).                             |
 
 How we stop anything going around it:
 
