@@ -9,7 +9,7 @@ Shortcut used below: `dc` = `docker compose -f compose.server.yml --env-file .en
    Hyderabad), then **upgrade to Pay As You Go** (needs a card; stays ₹0 inside the free limits, and
    stops idle-server reclamation). If ARM capacity is "out of stock", retry later or try another
    availability domain.
-2. **VM.** Compute → Instances → Create: image *Ubuntu 24.04*, shape *VM.Standard.A1.Flex*,
+2. **VM.** Compute → Instances → Create: image _Ubuntu 24.04_, shape _VM.Standard.A1.Flex_,
    2 OCPU / 12 GB, 50 GB boot volume. Add your SSH public key. In the subnet's security list, open
    TCP 80 and 443.
 3. **Free address.** Create a free subdomain at duckdns.org (e.g. `bookmarker-staging.duckdns.org`)
@@ -41,7 +41,7 @@ Shortcut used below: `dc` = `docker compose -f compose.server.yml --env-file .en
 6. **GitHub.** Settings → Environments → create `staging` with secrets `SSH_HOST` (VM IP),
    `SSH_USER` (`ubuntu`), `SSH_KEY` (a deploy private key whose public half is in
    `~/.ssh/authorized_keys`). Settings → Branches → protect `main`: require the checks
-   **checks**, **leak-test (AT-1)**, **e2e** and **security**. Packages: make the two GHCR images
+   **checks**, **leak-test (AT-1)**, **e2e**, **security** and **docker-build**. Packages: make the two GHCR images
    readable by the VM (`docker login ghcr.io` on the VM with a read-only token, or make them public).
 7. Push to `main`. The Deploy workflow builds images, copies the compose files, runs migrations and
    starts everything. Staging email lands in Mailpit at `https://DOMAIN/mail`.
@@ -61,7 +61,7 @@ What a deploy does: pull images tagged with the commit SHA → `migrate` runs `p
 ## Roll back
 
 Code: Actions → Deploy → Run workflow → pick the environment and paste the **previous SHA** from
-`deploy-history.log` as *tag*. That redeploys the old images without rebuilding.
+`deploy-history.log` as _tag_. That redeploys the old images without rebuilding.
 
 Database: migrations only move forward. Write every migration so the previous release still works
 with it ("expand, then contract"). If a migration itself is bad, restore a backup (below) and roll
@@ -83,6 +83,7 @@ The restore script prints row counts so you can check the copy. To make it live:
 `bookmarker_restore` → `bookmarker`), `dc start api worker`.
 
 **Restore drill:** do it once before launch and after any schema change, and record the date here.
+
 - 2026-10-01: drill on dev data, 17/17 posts restored.
 
 To restore from the bucket, first copy the file down:
@@ -90,14 +91,14 @@ To restore from the bucket, first copy the file down:
 
 ## Rotate secrets
 
-| Secret | How | Effect |
-|---|---|---|
-| `SESSION_SECRET` | New value in `.env`, `dc up -d api` | Only signs the 10-minute OAuth state cookie; sessions are unaffected. |
-| Everyone's sessions | `dc exec postgres psql -U bookmarker -c 'TRUNCATE sessions'` | Everyone signs in again. |
-| `POSTGRES_PASSWORD` | `ALTER USER bookmarker PASSWORD '…'` in psql, then update `.env`, `dc up -d` | Brief restart. |
-| `GOOGLE_CLIENT_SECRET` | Create a new secret in Google Console, update `.env`, `dc up -d api`, delete the old one | None. |
-| SMTP / S3 keys | Issue new keys at the provider, update `.env`, `dc up -d api worker backup`, revoke old | None. |
-| Deploy SSH key | New key pair; add the public key on the VM, update the GitHub environment secret, remove the old key | None. |
+| Secret                 | How                                                                                                  | Effect                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `SESSION_SECRET`       | New value in `.env`, `dc up -d api`                                                                  | Only signs the 10-minute OAuth state cookie; sessions are unaffected. |
+| Everyone's sessions    | `dc exec postgres psql -U bookmarker -c 'TRUNCATE sessions'`                                         | Everyone signs in again.                                              |
+| `POSTGRES_PASSWORD`    | `ALTER USER bookmarker PASSWORD '…'` in psql, then update `.env`, `dc up -d`                         | Brief restart.                                                        |
+| `GOOGLE_CLIENT_SECRET` | Create a new secret in Google Console, update `.env`, `dc up -d api`, delete the old one             | None.                                                                 |
+| SMTP / S3 keys         | Issue new keys at the provider, update `.env`, `dc up -d api worker backup`, revoke old              | None.                                                                 |
+| Deploy SSH key         | New key pair; add the public key on the VM, update the GitHub environment secret, remove the old key | None.                                                                 |
 
 ## Everyday checks
 
