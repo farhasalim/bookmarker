@@ -7,3 +7,9 @@ onlyBuiltDependencies:
   - prisma
   - esbuild
   - sharp
+
+# Security fixes for packages pulled in by the Prisma CLI (dev/migrate only).
+# Remove once Prisma ships with patched versions.
+overrides:
+  deepmerge-ts: ">=8.0.2"
+  mysql2: ">=3.24.5"
