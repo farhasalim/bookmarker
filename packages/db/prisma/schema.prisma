@@ -1,0 +1,371 @@
+// BookMarker data model.
+// SRS section 5 (15 tables) + addendum: sessions, magic_tokens, reports, room_events.
+// See docs/srs-addendum.md for every deviation from the SRS and why.
+//
+// SPOILER RULE: post / reply / like / review rows must only be read through
+// packages/gate. ESLint blocks direct access elsewhere.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  host
+  member
+}
+
+enum RoomStatus {
+  current
+  done
+}
+
+enum ChapterKind {
+  chapter
+  after_book // the "After the book" section, always at position chapterCount + 1
+}
+
+enum StarReason {
+  rated
+  reviewed
+}
+
+enum AuthProvider {
+  google
+  email
+}
+
+model User {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  email             String    @unique
+  name              String
+  avatarUrl         String?   @map("avatar_url")
+  timezone          String    @default("Asia/Kolkata")
+  starTotal         Int       @default(0) @map("star_total")
+  // Validated by NotificationPrefs in packages/shared (FR-20).
+  notificationPrefs Json      @default("{}") @map("notification_prefs")
+  isAdmin           Boolean   @default(false) @map("is_admin")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  // Account deletion anonymises the row instead of removing it (SEC-11).
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  identities    AuthIdentity[]
+  sessions      Session[]
+  memberships   Membership[]
+  bookmarks     Bookmark[]
+  posts         Post[]
+  replies       Reply[]
+  likes         Like[]
+  reviews       Review[]
+  starEvents    StarEvent[]
+  notifications Notification[]
+  nudges        NudgeSchedule[]
+  reports       Report[]        @relation("reporter")
+  clubsCreated  Club[]
+  invites       Invite[]
+
+  @@map("users")
+}
+
+model AuthIdentity {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  provider        AuthProvider
+  providerSubject String       @map("provider_subject")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@map("auth_identities")
+}
+
+// Addendum: server-side sessions (SEC-1). id = SHA-256 of the cookie token.
+model Session {
+  id         String   @id
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Addendum: magic-link tokens (SEC-3). Stored hashed, single-use, 15 minutes.
+model MagicToken {
+  tokenHash String    @id @map("token_hash")
+  email     String
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([email])
+  @@map("magic_tokens")
+}
+
+model Club {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  name        String
+  description String?
+  accentColor String?  @map("accent_color")
+  // Key into PLANS in packages/shared/src/plans.ts. Everyone is on "free" until charging ships.
+  plan        String   @default("free")
+  createdById String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  memberships Membership[]
+  invites     Invite[]
+  rooms       Room[]
+
+  @@map("clubs")
+}
+
+model Membership {
+  clubId         String   @map("club_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  role           Role     @default(member)
+  positionHidden Boolean  @default(false) @map("position_hidden")
+  joinedAt       DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([clubId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Invite {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  clubId      String    @map("club_id") @db.Uuid
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  maxUses     Int?      @map("max_uses")
+  uses        Int       @default(0)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdById String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  club      Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([clubId])
+  @@map("invites")
+}
+
+model Room {
+  id                  String     @id @default(uuid(7)) @db.Uuid
+  clubId              String     @map("club_id") @db.Uuid
+  title               String
+  author              String?
+  coverUrl            String?    @map("cover_url")
+  isbn                String?
+  status              RoomStatus @default(current)
+  // Set when the host confirms the chapter list (decision #11). Until then the
+  // list is a draft: nobody can post and edits are unrestricted.
+  chaptersConfirmedAt DateTime?  @map("chapters_confirmed_at") @db.Timestamptz(3)
+  openedAt            DateTime   @default(now()) @map("opened_at") @db.Timestamptz(3)
+  closedAt            DateTime?  @map("closed_at") @db.Timestamptz(3)
+
+  club      Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  chapters  Chapter[]
+  bookmarks Bookmark[]
+  reviews   Review[]
+  posts     Post[]
+  events    RoomEvent[]
+  nudges    NudgeSchedule[]
+  stars     StarEvent[]
+
+  @@index([clubId, status])
+  @@map("rooms")
+}
+
+model Chapter {
+  id       String      @id @default(uuid(7)) @db.Uuid
+  roomId   String      @map("room_id") @db.Uuid
+  position Int // 1..N for chapters, N+1 for the after_book section
+  title    String
+  kind     ChapterKind @default(chapter)
+
+  room  Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  posts Post[]
+
+  @@unique([roomId, position])
+  @@map("chapters")
+}
+
+model Bookmark {
+  userId   String   @map("user_id") @db.Uuid
+  roomId   String   @map("room_id") @db.Uuid
+  position Int      @default(0) // last chapter finished; 0 = not started
+  finished Boolean  @default(false) // finished = sees everything, incl. after_book
+  movedAt  DateTime @default(now()) @map("moved_at") @db.Timestamptz(3)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roomId])
+  @@index([roomId, position])
+  @@map("bookmarks")
+}
+
+model Post {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  roomId      String    @map("room_id") @db.Uuid
+  chapterId   String    @map("chapter_id") @db.Uuid
+  authorId    String    @map("author_id") @db.Uuid
+  body        String
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  editedAt    DateTime? @map("edited_at") @db.Timestamptz(3)
+  // Soft delete keeps moderation history (decision #13: no "hidden" state).
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+  deletedById String?   @map("deleted_by") @db.Uuid
+
+  room    Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  chapter Chapter  @relation(fields: [chapterId], references: [id], onDelete: Restrict)
+  author  User     @relation(fields: [authorId], references: [id])
+  replies Reply[]
+  likes   Like[]
+  reports Report[]
+
+  @@index([chapterId, createdAt])
+  @@index([roomId])
+  @@map("posts")
+}
+
+model Reply {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  postId    String    @map("post_id") @db.Uuid
+  authorId  String    @map("author_id") @db.Uuid
+  body      String
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([postId, createdAt])
+  @@map("replies")
+}
+
+model Like {
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@map("likes")
+}
+
+model Review {
+  roomId    String   @map("room_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  rating    Int // 1..5, CHECK constraint in migration
+  body      String?
+  // Opt-in public (decision on #1/#12): shows on profile + share card behind a spoiler reveal.
+  isPublic  Boolean  @default(false) @map("is_public")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@map("reviews")
+}
+
+model StarEvent {
+  id        String     @id @default(uuid(7)) @db.Uuid
+  userId    String     @map("user_id") @db.Uuid
+  roomId    String     @map("room_id") @db.Uuid
+  reason    StarReason
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId, reason])
+  @@map("star_events")
+}
+
+model Notification {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  // Ids and counts only. Post text is never stored here; it is fetched through
+  // the gate when the notification is rendered or emailed.
+  payload   Json      @default("{}")
+  roomId    String?   @map("room_id") @db.Uuid
+  chapterId String?   @map("chapter_id") @db.Uuid
+  postId    String?   @map("post_id") @db.Uuid
+  // Makes enqueueing idempotent (e.g. one weekly update per user per week).
+  dedupeKey String?   @unique @map("dedupe_key")
+  sendAfter DateTime  @default(now()) @map("send_after") @db.Timestamptz(3)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(3)
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(3)
+  // Set when the gate re-check at send time says "not any more".
+  droppedAt DateTime? @map("dropped_at") @db.Timestamptz(3)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sentAt])
+  @@index([sentAt, sendAfter])
+  @@map("notifications")
+}
+
+model NudgeSchedule {
+  userId         String    @map("user_id") @db.Uuid
+  roomId         String    @map("room_id") @db.Uuid
+  nextReminderAt DateTime  @map("next_reminder_at") @db.Timestamptz(3)
+  lastReminderAt DateTime? @map("last_reminder_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roomId])
+  @@index([nextReminderAt])
+  @@map("nudge_schedule")
+}
+
+// Addendum: reports (FR-19).
+model Report {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  postId       String    @map("post_id") @db.Uuid
+  reporterId   String    @map("reporter_id") @db.Uuid
+  reason       String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt   DateTime? @map("resolved_at") @db.Timestamptz(3)
+  resolvedById String?   @map("resolved_by") @db.Uuid
+
+  post     Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter User @relation("reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, reporterId])
+  @@map("reports")
+}
+
+// Addendum: per-room event log behind socket replay (room:join { lastSeq }).
+// Holds ids only; replay re-reads content through the gate for each socket.
+model RoomEvent {
+  roomId    String   @map("room_id") @db.Uuid
+  seq       Int
+  type      String
+  payload   Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, seq])
+  @@map("room_events")
+}
