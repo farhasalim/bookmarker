@@ -22,9 +22,12 @@ export interface Mailer {
 /**
  * Picks the transport from SMTP_URL:
  *  - smtp://… or smtps://…  real SMTP (Mailpit, Resend, Brevo, SES, …)
+ *  - brevo://API_KEY         Brevo's HTTPS API, for hosts that block SMTP ports
+ *                            (Render's free plan does)
  *  - file:///some/dir        dev/test only: each email is written as a JSON file
  */
 export function mailerFromUrl(url: string, from: string): Mailer {
+  if (url.startsWith('brevo://')) return brevoMailer(url.slice('brevo://'.length), from);
   if (url.startsWith('file://')) {
     if (process.env.NODE_ENV === 'production')
       throw new Error('file:// mailer is for development only');
@@ -49,6 +52,48 @@ export function smtpMailer(smtpUrl: string, from: string): Mailer {
   return {
     async send(msg) {
       await transport.sendMail({ from, ...msg });
+    },
+  };
+}
+
+/** "BookMarker <hello@x.org>" → { name, email }; a bare address works too. */
+export function parseFrom(from: string): { name?: string; email: string } {
+  const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(from);
+  if (!m) return { email: from.trim() };
+  const name = m[1]!.replace(/^"|"$/g, '');
+  return name ? { name, email: m[2]!.trim() } : { email: m[2]!.trim() };
+}
+
+/**
+ * Brevo's transactional email API over HTTPS (https://developers.brevo.com).
+ * Same message shape as SMTP, so switching back is one setting.
+ */
+export function brevoMailer(apiKey: string, from: string, fetchImpl: typeof fetch = fetch): Mailer {
+  if (!apiKey) throw new Error('brevo:// needs an API key: brevo://YOUR_KEY');
+  const sender = parseFrom(from);
+  return {
+    async send(msg) {
+      const res = await fetchImpl('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': apiKey,
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify({
+          sender,
+          to: [{ email: msg.to }],
+          subject: msg.subject,
+          textContent: msg.text,
+          htmlContent: msg.html,
+          ...(msg.headers ? { headers: msg.headers } : {}),
+        }),
+      });
+      if (!res.ok) {
+        // The body explains what's wrong (bad key, unverified sender); never the email text.
+        const detail = (await res.text().catch(() => '')).slice(0, 300);
+        throw new Error(`Brevo rejected the email (${res.status}): ${detail}`);
+      }
     },
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { inQuietHours, localWeekday, nextSendableTime } from '../src/quiet-hours.ts';
 import { reminderEmail, weeklyEmail } from '../src/templates.ts';
+import { brevoMailer, mailerFromUrl, parseFrom } from '../src/mailer.ts';
 
 const IST = 'Asia/Kolkata'; // UTC+05:30
 
@@ -60,5 +61,46 @@ describe('templates', () => {
     expect(m.text).toContain('Anu: chapter 12');
     expect(m.text).toContain('Joel: finished');
     expect(m.text).toContain('You: chapter 6.');
+  });
+});
+
+describe('brevo:// mailer', () => {
+  const msg = { to: 'meera@x.test', subject: 'Hi', text: 'plain', html: '<p>plain</p>' };
+
+  it('posts the message to the Brevo API with the key and sender', async () => {
+    const calls: [string, RequestInit][] = [];
+    const fake = (async (url: string, init: RequestInit) => {
+      calls.push([url, init]);
+      return new Response('{}', { status: 201 });
+    }) as unknown as typeof fetch;
+    await brevoMailer('xkeysib-ABC', 'BookMarker <hello@x.test>', fake).send(msg);
+    expect(calls[0]![0]).toBe('https://api.brevo.com/v3/smtp/email');
+    expect((calls[0]![1].headers as Record<string, string>)['api-key']).toBe('xkeysib-ABC');
+    expect(JSON.parse(calls[0]![1].body as string)).toEqual({
+      sender: { name: 'BookMarker', email: 'hello@x.test' },
+      to: [{ email: 'meera@x.test' }],
+      subject: 'Hi',
+      textContent: 'plain',
+      htmlContent: '<p>plain</p>',
+    });
+  });
+
+  it('throws when Brevo rejects the send', async () => {
+    const fake = (async () =>
+      new Response('unauthorized', { status: 401 })) as unknown as typeof fetch;
+    await expect(brevoMailer('bad', 'a@x.test', fake).send(msg)).rejects.toThrow(/401/);
+  });
+
+  it('is chosen by mailerFromUrl, keeping the key’s case', () => {
+    expect(() => mailerFromUrl('brevo://', 'a@x.test')).toThrow(/API key/);
+    expect(mailerFromUrl('brevo://xkeysib-AbC', 'a@x.test')).toBeTruthy();
+  });
+
+  it('parses sender addresses', () => {
+    expect(parseFrom('"Book Marker" <a@x.test>')).toEqual({
+      name: 'Book Marker',
+      email: 'a@x.test',
+    });
+    expect(parseFrom('a@x.test')).toEqual({ email: 'a@x.test' });
   });
 });
