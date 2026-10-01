@@ -1,13 +1,15 @@
-# Builds ARM64 + AMD64 images, pushes to GitHub Container Registry, then deploys.
-#   push to main          → staging
-#   manual "Run workflow" → production (choose the tag to deploy, or roll back to an older one)
-# Needs two GitHub Environments, "staging" and "production", each with secrets
-# SSH_HOST, SSH_USER, SSH_KEY. Give "production" a required reviewer so deploys
-# wait for your click. See docs/runbook.md.
+# Runs after CI passes on main (never on a red commit):
+#   1. builds the images and pushes them to GitHub Container Registry (tag = git SHA)
+#   2. deploys staging to Render, if the RENDER_DEPLOY_HOOK secret is set   (docs/render.md)
+#   3. deploys to our own server over SSH, if the SSH_HOST secret is set      (docs/runbook.md)
+# Manual "Run workflow": pick staging or production and, to roll back, an older SHA.
+# Secrets live in the GitHub Environments "staging" and "production".
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -25,12 +27,20 @@ permissions:
   contents: read
   packages: write
 
+env:
+  SHA: ${{ inputs.tag || github.event.workflow_run.head_sha || github.sha }}
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
 jobs:
   build:
-    if: github.event_name == 'push' || inputs.tag == ''
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push')
+      || (github.event_name == 'workflow_dispatch' && inputs.tag == '')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { ref: '${{ env.SHA }}' }
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -47,7 +57,7 @@ jobs:
           file: infra/Dockerfile.node
           platforms: linux/arm64,linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/bookmarker-node:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/bookmarker-node:${{ env.SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Web image
@@ -57,24 +67,59 @@ jobs:
           file: infra/Dockerfile.web
           platforms: linux/arm64,linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/bookmarker-web:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/bookmarker-web:${{ env.SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Render image (web + API in one container)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.render
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/bookmarker-render:${{ env.SHA }}
+            ${{ env.REGISTRY }}/bookmarker-render:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  render:
     needs: [build]
-    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    if: >-
+      always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+      && (inputs.environment || 'staging') == 'staging'
+      && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+    steps:
+      - if: env.HOOK == ''
+        run: echo "::notice::No RENDER_DEPLOY_HOOK secret yet; skipping Render (docs/render.md)."
+      - name: Ask Render to deploy this image
+        if: env.HOOK != ''
+        run: |
+          image="$REGISTRY/bookmarker-render:$SHA"
+          curl -fsS -X POST "$HOOK&imgURL=$(jq -rn --arg v "$image" '$v|@uri')" -o /dev/null
+          echo "Render is deploying $image"
+
+  server:
+    needs: [build]
+    if: >-
+      always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+      && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'staging' }}
     env:
-      # Until the server's secrets are added (docs/runbook.md), images are still
-      # built and pushed but nothing is deployed, so the run stays green.
+      # Until the server's secrets are added (docs/runbook.md), nothing is deployed
+      # here, so the run stays green.
       HAS_SERVER: ${{ secrets.SSH_HOST != '' }}
     steps:
       - if: env.HAS_SERVER != 'true'
-        run: echo "::notice::No SSH_HOST secret for this environment yet; skipping deploy."
+        run: echo "::notice::No SSH_HOST secret for this environment yet; skipping server deploy."
       - uses: actions/checkout@v4
         if: env.HAS_SERVER == 'true'
+        with: { ref: '${{ env.SHA }}' }
       - name: Copy server files
         if: env.HAS_SERVER == 'true'
         uses: appleboy/scp-action@v0.1.7
@@ -89,7 +134,7 @@ jobs:
         if: env.HAS_SERVER == 'true'
         uses: appleboy/ssh-action@v1.2.0
         env:
-          TAG: ${{ inputs.tag || github.sha }}
+          TAG: ${{ env.SHA }}
           PROFILE: ${{ (inputs.environment || 'staging') == 'staging' && '--profile staging' || '' }}
         with:
           host: ${{ secrets.SSH_HOST }}

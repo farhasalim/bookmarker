@@ -1,0 +1,48 @@
+# The background jobs for the Render staging copy, which has no free worker:
+# post letters (30-minute batches), 3-day reminders and the Sunday update.
+# Every job works from database state and checks the spoiler gate at send time,
+# so a late or doubled run is harmless. On our own server the worker container
+# does this instead (every minute), and this workflow can be switched off.
+#
+# Needs these secrets in the "staging" environment (docs/render.md):
+#   WORKER_DATABASE_URL, SMTP_URL, EMAIL_FROM, APP_URL
+name: Worker (scheduled)
+
+on:
+  schedule:
+    - cron: '*/15 * * * *' # GitHub may start it a few minutes late; that's fine.
+  workflow_dispatch:
+
+concurrency:
+  group: worker-cron
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run-jobs:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.WORKER_DATABASE_URL }}
+      SMTP_URL: ${{ secrets.SMTP_URL }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      APP_URL: ${{ secrets.APP_URL }}
+      NODE_ENV: production
+    steps:
+      - if: env.DATABASE_URL == ''
+        run: echo "::notice::No WORKER_DATABASE_URL secret yet; nothing to do (docs/render.md)."
+      - uses: actions/checkout@v4
+        if: env.DATABASE_URL != ''
+      - uses: pnpm/action-setup@v4
+        if: env.DATABASE_URL != ''
+      - uses: actions/setup-node@v4
+        if: env.DATABASE_URL != ''
+        with: { node-version: 22, cache: pnpm }
+      - if: env.DATABASE_URL != ''
+        run: pnpm install --frozen-lockfile --filter "@bookmarker/worker..."
+      - name: Letters, reminders, Sunday update
+        if: env.DATABASE_URL != ''
+        run: pnpm --filter @bookmarker/worker once all
