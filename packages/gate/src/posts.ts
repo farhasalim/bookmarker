@@ -218,6 +218,16 @@ export async function setLike(
   return { count, position: post.chapter.position, authorId: post.authorId };
 }
 
+/** One reply, only if its post is visible to the viewer (socket reply:new). */
+export async function getVisibleReply(tx: Tx, viewer: Viewer, replyId: string): Promise<ReplyDTO> {
+  const row = await tx.reply.findFirst({
+    where: { id: replyId, deletedAt: null, post: visiblePostsWhere(viewer) },
+    include: replyInclude,
+  });
+  if (!row) throw notFound();
+  return toReplyDTO(row, viewer);
+}
+
 /** Re-check, at send time, whether `viewer` may see `postId` (notifications, sockets). */
 export function viewerCanSee(viewer: Viewer, post: { authorId: string; position: number }): boolean {
   return canSeePost(viewer, { authorId: post.authorId, chapterPosition: post.position });

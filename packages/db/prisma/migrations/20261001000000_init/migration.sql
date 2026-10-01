@@ -111,6 +111,7 @@ CREATE TABLE "rooms" (
     "chapters_confirmed_at" TIMESTAMPTZ(3),
     "opened_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "closed_at" TIMESTAMPTZ(3),
+    "event_seq" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "rooms_pkey" PRIMARY KEY ("id")
 );

@@ -1,0 +1,41 @@
+{
+  "name": "@bookmarker/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:leak": "vitest run test/leak.test.ts"
+  },
+  "dependencies": {
+    "@bookmarker/db": "workspace:*",
+    "@bookmarker/gate": "workspace:*",
+    "@bookmarker/mail": "workspace:*",
+    "@bookmarker/shared": "workspace:*",
+    "arctic": "^3.7.0",
+    "cookie": "^1.0.2",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.8.2",
+    "jose": "^6.1.0",
+    "pino": "^10.1.0",
+    "pino-http": "^11.0.0",
+    "socket.io": "^4.8.1",
+    "tsx": "^4.20.6",
+    "zod": "^4.3.3"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.18.0",
+    "@types/supertest": "^6.0.3",
+    "socket.io-client": "^4.8.1",
+    "supertest": "^7.1.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.3"
+  }
+}

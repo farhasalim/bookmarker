@@ -171,6 +171,8 @@ model Room {
   chaptersConfirmedAt DateTime?  @map("chapters_confirmed_at") @db.Timestamptz(3)
   openedAt            DateTime   @default(now()) @map("opened_at") @db.Timestamptz(3)
   closedAt            DateTime?  @map("closed_at") @db.Timestamptz(3)
+  // Last room_events.seq handed out; incremented atomically per event.
+  eventSeq            Int        @default(0) @map("event_seq")
 
   club      Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
   chapters  Chapter[]

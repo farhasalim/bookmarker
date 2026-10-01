@@ -99,6 +99,8 @@ export interface ServerToClientEvents {
   moderation: (e: { roomId: string; seq: number; postId: string; action: 'delete' }) => void;
   'notification:new': (e: { id: string }) => void;
   'room:replay-done': (e: { roomId: string; seq: number }) => void;
+  /** Chapter list changed: refetch the room. */
+  'room:changed': (e: { roomId: string; seq: number }) => void;
 }
 
 export interface ClientToServerEvents {
