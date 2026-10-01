@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.next/
+coverage/
+playwright-report/
+test-results/
+*.log
+.env
+.env.*
+!.env.example
+!.env.test
+packages/db/src/generated/
+.DS_Store
+infra/secrets/*.dec.*
