@@ -16,8 +16,9 @@ export default function Landing() {
         Read together, at your own pace.
       </h1>
       <p className="mt-5 font-serif text-lg leading-relaxed">
-        Move your bookmark as you read. Your friends’ thoughts wait for you at every chapter, and
-        nothing past your bookmark ever reaches you.
+        Set up your own reading room, and add the book you’re reading together. Invite your friends
+        &amp; update your bookmark. Feel free to share your thoughts at each chapter &amp; read your
+        friends’ notes as you progress. Have a spoiler-safe reading experience!
       </p>
       <div className="mt-10 flex flex-col gap-3">
         <Link
