@@ -122,8 +122,9 @@ export default function Settings() {
         <section id="notifications" className="flex flex-col gap-3">
           <h2 className="font-serif text-xl font-medium">Notifications</h2>
           <p className="text-sm text-muted">
-            You only ever hear about chapters you’ve reached. Emails never include what anyone
-            wrote.
+            Notifications arrive in Letters, here in the app. You only ever hear about chapters
+            you’ve reached. Want some by email too? Tick them below; emails never include what
+            anyone wrote.
           </p>
           <table className="w-full text-left text-[15px]">
             <thead>

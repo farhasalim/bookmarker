@@ -45,7 +45,12 @@ describe('GET /rooms/:id (FR-9, AT-4)', () => {
       unlocked: false,
       count: 1,
     });
-    expect(res.body.me).toMatchObject({ position: 3, finished: false, isHost: false, postCount: 3 });
+    expect(res.body.me).toMatchObject({
+      position: 3,
+      finished: false,
+      isHost: false,
+      postCount: 3,
+    });
   });
 
   it('lists friends with chapter numbers only', async () => {

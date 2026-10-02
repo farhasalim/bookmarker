@@ -231,10 +231,17 @@ describe('profile, export and account deletion (FR-18, SEC-11)', () => {
 
   it('updates name, time zone and notification settings (FR-20)', async () => {
     const res = await a.meera
-      .patch('/me', { timezone: 'Europe/London', notificationPrefs: { weeklyEmail: false } })
+      .patch('/me', { timezone: 'Europe/London', notificationPrefs: { weeklyEmail: true } })
       .expect(200);
     expect(res.body.timezone).toBe('Europe/London');
-    expect(res.body.notificationPrefs).toMatchObject({ weeklyEmail: false, remindersEmail: true });
+    // Opting in to one email leaves the rest at the in-app-only default.
+    expect(res.body.notificationPrefs).toMatchObject({
+      weeklyEmail: true,
+      weeklyInApp: true,
+      remindersEmail: false,
+      repliesEmail: false,
+      postsEmail: false,
+    });
     await a.meera.patch('/me', { timezone: 'Mars/Olympus' }).expect(400);
   });
 });

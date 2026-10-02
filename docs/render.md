@@ -37,6 +37,8 @@ The spoiler gate is the same code everywhere. Nothing here changes what a reader
 
 ### 2. Brevo (email)
 
+Email is used for sign-in links; notifications are in-app unless a reader opts in to email.
+
 1. Sign up at **brevo.com** (free: 300 emails a day).
 2. **Senders, domains & dedicated IPs → Senders → Add a sender** with the address you want emails
    to come from (your Gmail works for staging) and confirm the email Brevo sends you.

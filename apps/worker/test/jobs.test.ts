@@ -32,8 +32,13 @@ beforeEach(async () => {
     appUrl: 'https://bookmarker.test',
     ping: async (userId, id) => void pings.push({ userId, id }),
   };
+  // Email is off by default (in-app only). Most tests here check what the emails
+  // say, so every reader opts in; "defaults" at the bottom checks the default.
+  await db.user.updateMany({ data: { notificationPrefs: ALL_EMAIL } });
 });
 afterAll(() => db.$disconnect());
+
+const ALL_EMAIL = { postsEmail: true, repliesEmail: true, remindersEmail: true, weeklyEmail: true };
 
 const email = (u: keyof SeedResult['users']) => `${u}@example.test`;
 const postAt = (p: number, author: string) =>
@@ -228,5 +233,39 @@ describe('weekly friends update (FR-14, AT-10)', () => {
     await db.user.update({ where: { id: s.users.meera }, data: { timezone: 'Europe/London' } });
     expect(await runWeekly(ctx, SUNDAY_10_IST)).toBe(2); // not Meera yet
     expect(await runWeekly(ctx, new Date('2026-10-04T09:00:00Z'))).toBe(1); // 10:00 BST
+  });
+});
+
+describe('defaults: notifications in-app only, email only for sign-in', () => {
+  beforeEach(async () => {
+    await db.user.updateMany({ data: { notificationPrefs: {} } });
+  });
+
+  it('posts, replies, reminders and the weekly update arrive in the app and send no email', async () => {
+    await queuePost(s.users.anu, postAt(10, s.users.rahul), 10);
+    await db.notification.create({
+      data: {
+        userId: s.users.anu,
+        type: 'reply',
+        postId: postAt(2, s.users.anu),
+        roomId: s.roomId,
+        sendAfter: T0,
+        payload: { replierName: 'Meera', position: 2, roomTitle: 'Pride and Prejudice' },
+      },
+    });
+    expect(await deliverDue(ctx, T0)).toEqual({ sent: 2, dropped: 0 });
+    await emailDelivered(ctx, T0);
+
+    await db.nudgeSchedule.create({
+      data: { userId: s.users.meera, roomId: s.roomId, nextReminderAt: T0 },
+    });
+    expect(await runReminders(ctx, T0)).toBe(1);
+    await runWeekly(ctx, new Date('2026-10-04T04:30:00Z')); // Sunday 10:00 IST
+
+    expect(mailer.sent).toEqual([]);
+    const inApp = await db.notification.findMany({ select: { type: true } });
+    expect(new Set(inApp.map((n) => n.type))).toEqual(
+      new Set(['post', 'reply', 'reminder', 'weekly']),
+    );
   });
 });

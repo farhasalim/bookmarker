@@ -78,15 +78,20 @@ export const Pagination = z.object({
 });
 
 /** FR-20: every channel can be switched off; reminder cadence adjustable. */
+/**
+ * Notification switches. Decision (Farha, 2 Oct 2026; SRS addendum): notifications
+ * are in-app by default and email is used only for sign-in. Each email switch
+ * stays in Settings so a reader can opt in.
+ */
 export const NotificationPrefs = z.object({
   postsInApp: z.boolean().default(true),
   postsEmail: z.boolean().default(false),
   repliesInApp: z.boolean().default(true),
-  repliesEmail: z.boolean().default(true),
+  repliesEmail: z.boolean().default(false),
   remindersInApp: z.boolean().default(true),
-  remindersEmail: z.boolean().default(true),
+  remindersEmail: z.boolean().default(false),
   weeklyInApp: z.boolean().default(true),
-  weeklyEmail: z.boolean().default(true),
+  weeklyEmail: z.boolean().default(false),
   reminderEveryDays: z.number().int().min(3).max(14).default(3),
 });
 export type NotificationPrefs = z.infer<typeof NotificationPrefs>;
