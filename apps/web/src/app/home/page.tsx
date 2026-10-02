@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useMe, useNotifications } from '@/lib/hooks';
-import { BottomNav, ErrorText, Loading, Ribbon, Screen } from '@/components/ui';
+import { BottomNav, ErrorText, Loading, Ribbon, Screen, TopRow } from '@/components/ui';
 
 import { PENDING_INVITE } from '@/lib/constants';
 
@@ -41,7 +41,8 @@ export default function Home() {
 
   return (
     <Screen>
-      <main id="main" className="flex-1 px-6 pb-8 pt-8">
+      <TopRow />
+      <main id="main" className="flex-1 px-6 pb-8 pt-0">
         <h1 className="font-serif text-[30px] font-medium">Reading</h1>
         <ErrorText error={joinError} />
         {rooms.length === 0 ? (

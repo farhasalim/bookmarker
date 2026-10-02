@@ -33,8 +33,9 @@
   color-scheme: light;
 }
 
+/* Dark: follow the phone's setting unless the reader chose light with the switch… */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --page: #121813;
     --panel: #1a231b;
     --panel-2: #1f2a20;
@@ -53,6 +54,27 @@
     --danger: #f0a091;
     color-scheme: dark;
   }
+}
+
+/* …or chose dark with the switch. Keep both blocks the same. */
+:root[data-theme='dark'] {
+  --page: #121813;
+  --panel: #1a231b;
+  --panel-2: #1f2a20;
+  --paper: #18201a;
+  --ink: #e4ede1;
+  --muted: #a7b5a5;
+  --accent: #a9cb8c;
+  --accent-strong: #c2dcaa;
+  --on-accent: #10160f;
+  --rule: #34433a;
+  --rule-soft: #2a372d;
+  --spine: #6e9a6f;
+  --spine-off: #3a4a3c;
+  --highlight: #243326;
+  --star: #e0b85a;
+  --danger: #f0a091;
+  color-scheme: dark;
 }
 
 @theme inline {

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 /** Phase 1 front door. The full landing, pricing and SEO pages come in Phase 2. */
 export default function Landing() {
@@ -7,6 +8,9 @@ export default function Landing() {
       <div className="flex items-center gap-3">
         <div aria-hidden className="ribbon h-9 w-5 bg-accent" />
         <span className="font-serif text-2xl font-medium">BookMarker</span>
+        <span className="-mr-3 ml-auto">
+          <ThemeToggle />
+        </span>
       </div>
       <h1 className="mt-16 font-serif text-[40px] font-medium leading-[1.05] tracking-tight">
         Read together, at your own pace.

@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BackIcon, BookIcon, LetterIcon, PeopleIcon, PersonIcon } from './icons';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Button({
   variant = 'primary',
@@ -47,8 +48,20 @@ export function TopBar({
         <span className="w-11" />
       )}
       {title && <div className="truncate text-sm text-muted">{title}</div>}
-      {right ?? <span className="w-11" />}
+      <div className="flex items-center">
+        {right}
+        <ThemeToggle />
+      </div>
     </header>
+  );
+}
+
+/** The light/dark switch, top right, for screens without a TopBar. */
+export function TopRow() {
+  return (
+    <div className="flex justify-end px-3 pt-3.5">
+      <ThemeToggle />
+    </div>
   );
 }
 

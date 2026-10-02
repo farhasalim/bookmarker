@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { plural, timeAgo } from '@/lib/format';
 import { useMe, useNotifications } from '@/lib/hooks';
 import type { NotificationItem } from '@/lib/types';
-import { BottomNav, Loading, Screen } from '@/components/ui';
+import { BottomNav, Loading, Screen, TopRow } from '@/components/ui';
 
 type Pos = { position: number; finished: boolean };
 
@@ -27,7 +27,8 @@ export default function Letters() {
   if (!data) return <Loading />;
   return (
     <Screen>
-      <header className="flex items-baseline justify-between border-b border-rule px-6 pb-3.5 pt-[26px]">
+      <TopRow />
+      <header className="flex items-baseline justify-between border-b border-rule px-6 pb-3.5 pt-0">
         <h1 className="font-serif text-[30px] font-medium">Letters</h1>
         <Link href="/settings#notifications" className="text-sm">
           Reminder settings

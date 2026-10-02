@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { themeScript } from '@/components/ThemeToggle';
 
 export const metadata: Metadata = {
   title: { default: 'BookMarker', template: '%s · BookMarker' },
@@ -18,7 +19,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the theme script may set data-theme before React loads.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-dvh antialiased">
         <a
           href="#main"

@@ -3,7 +3,7 @@ import { Suspense, useState } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import { api, fetcher } from '@/lib/api';
-import { Button, ErrorText, Screen } from '@/components/ui';
+import { Button, ErrorText, Screen, TopRow } from '@/components/ui';
 
 const ERRORS: Record<string, string> = {
   link: 'That sign-in link has expired or was already used. Ask for a new one below.',
@@ -36,7 +36,8 @@ function SignIn() {
 
   return (
     <Screen>
-      <main id="main" className="flex flex-1 flex-col px-6 pt-14">
+      <TopRow />
+      <main id="main" className="flex flex-1 flex-col px-6 pt-6">
         <div aria-hidden className="ribbon h-10 w-6 bg-accent" />
         <h1 className="mt-6 font-serif text-[34px] font-medium leading-tight">
           Sign in to BookMarker

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useMe, useNotifications } from '@/lib/hooks';
-import { BottomNav, Loading, Screen } from '@/components/ui';
+import { BottomNav, Loading, Screen, TopRow } from '@/components/ui';
 
 export default function Clubs() {
   const { data: me } = useMe();
@@ -9,7 +9,8 @@ export default function Clubs() {
   if (!me) return <Loading />;
   return (
     <Screen>
-      <main id="main" className="flex-1 px-6 pb-8 pt-8">
+      <TopRow />
+      <main id="main" className="flex-1 px-6 pb-8 pt-0">
         <div className="flex items-baseline justify-between">
           <h1 className="font-serif text-[30px] font-medium">Clubs</h1>
           <Link href="/clubs/new" className="font-semibold">

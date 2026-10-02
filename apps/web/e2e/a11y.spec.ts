@@ -54,3 +54,31 @@ test('core screens pass axe and the bookmark slider works by keyboard', async ({
   await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
   await noSeriousViolations(page, 'profile');
 });
+
+test('the light/dark switch flips the theme, is remembered, and dark mode passes axe', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ colorScheme: 'light' });
+  const page = await context.newPage();
+  await page.goto('/');
+  const html = page.locator('html');
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const lightBg = await bg();
+
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  expect(await bg()).not.toBe(lightBg);
+  await noSeriousViolations(page, 'landing (dark)');
+
+  // Remembered on this device, including on other pages, with no flash of light.
+  await page.goto('/signin');
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+  await noSeriousViolations(page, 'sign-in (dark)');
+
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await page.reload();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  expect(await bg()).toBe(lightBg);
+  await context.close();
+});

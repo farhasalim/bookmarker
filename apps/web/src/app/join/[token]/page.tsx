@@ -3,7 +3,7 @@ import { use, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { ApiError, api, fetcher } from '@/lib/api';
-import { Button, ErrorText, Loading, Screen } from '@/components/ui';
+import { Button, ErrorText, Loading, Screen, TopRow } from '@/components/ui';
 
 import { PENDING_INVITE } from '@/lib/constants';
 
@@ -41,7 +41,8 @@ export default function Join({ params }: { params: Promise<{ token: string }> })
   if (invite.isLoading) return <Loading />;
   return (
     <Screen>
-      <main id="main" className="flex flex-1 flex-col px-6 pt-16">
+      <TopRow />
+      <main id="main" className="flex flex-1 flex-col px-6 pt-8">
         <div aria-hidden className="ribbon h-10 w-6 bg-accent" />
         {invite.error ? (
           <>
