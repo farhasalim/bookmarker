@@ -51,7 +51,7 @@ jobs:
             password: '${{ secrets.GITHUB_TOKEN }}',
           }
       - name: Node image (api, worker, migrate)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/Dockerfile.node
@@ -61,7 +61,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/Dockerfile.web
@@ -71,7 +71,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Render image (web + API in one container)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/Dockerfile.render

@@ -125,7 +125,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - name: Node image (api, worker, migrate)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           {
             context: .,
@@ -135,7 +135,7 @@ jobs:
             cache-to: 'type=gha,mode=max',
           }
       - name: Web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           {
             context: .,
@@ -145,7 +145,7 @@ jobs:
             cache-to: 'type=gha,mode=max',
           }
       - name: Render image (web + API in one container)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           {
             context: .,
