@@ -27,7 +27,7 @@ jobs:
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
@@ -52,7 +52,7 @@ jobs:
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
@@ -78,7 +78,7 @@ jobs:
       DATABASE_URL: postgresql://bookmarker:bookmarker@localhost:5432/bookmarker_e2e_test
       E2E_DATABASE_URL: postgresql://bookmarker:bookmarker@localhost:5432/bookmarker_e2e_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
@@ -95,7 +95,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
@@ -122,7 +122,7 @@ jobs:
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U bookmarker" --health-interval 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
       - name: Node image (api, worker, migrate)
         uses: docker/build-push-action@v6

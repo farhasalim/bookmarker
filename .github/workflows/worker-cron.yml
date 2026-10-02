@@ -34,7 +34,7 @@ jobs:
     steps:
       - if: env.DATABASE_URL == ''
         run: echo "::notice::No WORKER_DATABASE_URL secret yet; nothing to do (docs/render.md)."
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.DATABASE_URL != ''
       - uses: pnpm/action-setup@v4
         if: env.DATABASE_URL != ''
