@@ -17,7 +17,7 @@
     "@bookmarker/shared": "workspace:*"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.3",
+    "@vitest/coverage-v8": "^5.0.3",
     "typescript": "^5.9.3",
     "vitest": "^4.0.3"
   }
