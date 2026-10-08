@@ -16,7 +16,7 @@
     "@bookmarker/mail": "workspace:*",
     "@bookmarker/shared": "workspace:*",
     "arctic": "^3.7.0",
-    "cookie": "^1.0.2",
+    "cookie": "^2.0.1",
     "cookie-parser": "^1.4.7",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
