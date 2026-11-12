@@ -20,15 +20,15 @@
     "drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "7.10.0",
-    "@prisma/client": "7.10.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "pg": "^8.16.3"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
     "@types/pg": "^8.15.5",
     "dotenv": "^17.2.3",
-    "prisma": "7.10.0",
+    "prisma": "7.10.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
